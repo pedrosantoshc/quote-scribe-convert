@@ -1,12 +1,11 @@
 
 import React, { useState, useRef } from 'react';
-import { Upload, Download, RefreshCw, Edit3 } from 'lucide-react';
+import { Upload, Download, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import DualImageUpload from './DualImageUpload';
 import QuoteTables from './QuoteTables';
-import ManualEntry from './ManualEntry';
 import DebugPanel from './DebugPanel';
 import QuoteForm from './QuoteForm';
 import { generatePDF } from '../utils/pdfGenerator';
@@ -49,11 +48,11 @@ const QuoteGenerator = () => {
   });
   const [ocrTexts, setOcrTexts] = useState<{pay: string; employee: string}>({pay: '', employee: ''});
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
-  const [showManualEntry, setShowManualEntry] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currencyRates, setCurrencyRates] = useState<CurrencyRates | null>(null);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [lastError, setLastError] = useState<string>('');
   const quoteRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -66,6 +65,7 @@ const QuoteGenerator = () => {
     setOcrTexts({pay: payText, employee: employeeText});
     setIsProcessing(true);
     setShowDebugPanel(true);
+    setLastError('');
 
     try {
       console.log('OCR Texts extracted:', {pay: payText, employee: employeeText});
@@ -74,7 +74,7 @@ const QuoteGenerator = () => {
       const payParsed = parseOCRText(payText);
       const employeeParsed = parseOCRText(employeeText);
       
-      // Get currency conversion rates
+      // Get currency conversion rates with error handling
       const rates = await convertCurrency();
       setCurrencyRates(rates);
 
@@ -84,12 +84,7 @@ const QuoteGenerator = () => {
       );
       
       if (!grossSalaryField) {
-        toast({
-          variant: "destructive",
-          title: "Parsing Failed",
-          description: "Could not find Gross Monthly Salary in the Amount You Pay table.",
-        });
-        return;
+        throw new Error("Could not find Gross Monthly Salary in the Amount You Pay table. Please ensure the screenshot contains a clear 'Gross Monthly Salary' field.");
       }
 
       const salary = grossSalaryField.amount;
@@ -155,20 +150,17 @@ const QuoteGenerator = () => {
       });
     } catch (error) {
       console.error('Error processing OCR:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process the images. Please try again.';
+      setLastError(errorMessage);
+      
       toast({
         variant: "destructive",
         title: "Processing Error",
-        description: "Failed to process the images. Please try again or use manual entry.",
+        description: errorMessage,
       });
     } finally {
       setIsProcessing(false);
     }
-  };
-
-  const handleManualData = (data: QuoteData) => {
-    setQuoteData(data);
-    setShowManualEntry(false);
-    setCurrentStep(3);
   };
 
   const handleDownloadPDF = async () => {
@@ -200,10 +192,14 @@ const QuoteGenerator = () => {
     });
     setOcrTexts({pay: '', employee: ''});
     setQuoteData(null);
-    setShowManualEntry(false);
     setIsProcessing(false);
     setShowDebugPanel(false);
     setCurrentStep(1);
+    setLastError('');
+  };
+
+  const dismissError = () => {
+    setLastError('');
   };
 
   return (
@@ -257,8 +253,8 @@ const QuoteGenerator = () => {
           <QuoteForm onSubmit={handleFormSubmit} />
         )}
 
-        {currentStep === 2 && !showManualEntry && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {currentStep === 2 && (
+          <div className="space-y-6">
             {/* Upload Section */}
             <Card className="rounded-2xl shadow-lg border-0">
               <CardHeader className="bg-[#FF5A71] text-white rounded-t-2xl">
@@ -275,38 +271,28 @@ const QuoteGenerator = () => {
               </CardContent>
             </Card>
 
-            {/* Manual Entry Option */}
-            <Card className="rounded-2xl shadow-lg border-0">
-              <CardHeader className="bg-gray-800 text-white rounded-t-2xl">
-                <CardTitle className="flex items-center">
-                  <Edit3 className="w-6 h-6 mr-3" />
-                  Manual Entry
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="text-center">
-                  <p className="text-gray-600 mb-6">
-                    Prefer to enter data manually? Skip the screenshot upload and input your quote details directly.
-                  </p>
-                  <Button
-                    onClick={() => setShowManualEntry(true)}
-                    variant="outline"
-                    className="rounded-full px-8 py-3"
-                  >
-                    Enter Manually
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Error Panel */}
+            {lastError && (
+              <Card className="rounded-2xl shadow-lg border-0 border-red-200">
+                <CardHeader className="bg-red-500 text-white rounded-t-2xl">
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Error</span>
+                    <Button
+                      onClick={dismissError}
+                      variant="ghost"
+                      size="sm"
+                      className="text-white hover:bg-red-600"
+                    >
+                      ×
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4">
+                  <p className="text-red-800 text-sm">{lastError}</p>
+                </CardContent>
+              </Card>
+            )}
           </div>
-        )}
-
-        {showManualEntry && (
-          <ManualEntry 
-            onSubmit={handleManualData} 
-            onCancel={() => setShowManualEntry(false)}
-            formData={formData}
-          />
         )}
 
         {currentStep === 3 && quoteData && (

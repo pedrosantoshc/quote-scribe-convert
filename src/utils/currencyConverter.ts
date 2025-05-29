@@ -37,7 +37,7 @@ export const convertCurrency = async (): Promise<CurrencyRates> => {
     const response = await fetch('https://open.er-api.com/v6/latest/USD');
     
     if (!response.ok) {
-      throw new Error('Failed to fetch exchange rates');
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
     
     const data = await response.json();
@@ -50,10 +50,23 @@ export const convertCurrency = async (): Promise<CurrencyRates> => {
         rates: data.rates
       };
     } else {
-      throw new Error('Invalid API response');
+      throw new Error('Invalid API response format');
     }
   } catch (error) {
     console.warn('Failed to fetch live rates, using fallback:', error);
+    
+    // Show toast notification about fallback rates
+    if (typeof window !== 'undefined' && window.dispatchEvent) {
+      const toastEvent = new CustomEvent('show-toast', {
+        detail: {
+          variant: 'destructive',
+          title: 'Exchange Rates',
+          description: 'Live exchange rates unavailable, using fallback rates.'
+        }
+      });
+      window.dispatchEvent(toastEvent);
+    }
+    
     return FALLBACK_RATES;
   }
 };

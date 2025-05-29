@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { Upload, Camera, Loader2, CheckCircle } from 'lucide-react';
+import { Upload, Camera, Loader2, CheckCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Tesseract from 'tesseract.js';
 
@@ -114,6 +114,26 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
     event.preventDefault();
   };
 
+  const clearImage = (type: 'pay' | 'employee') => {
+    if (type === 'pay') {
+      setPayImage(null);
+      setPayOcrText('');
+      setPayOcrDone(false);
+      setPayOcrProgress(0);
+      if (payFileInputRef.current) {
+        payFileInputRef.current.value = '';
+      }
+    } else {
+      setEmployeeImage(null);
+      setEmployeeOcrText('');
+      setEmployeeOcrDone(false);
+      setEmployeeOcrProgress(0);
+      if (employeeFileInputRef.current) {
+        employeeFileInputRef.current.value = '';
+      }
+    }
+  };
+
   const UploadArea = ({ 
     title, 
     type, 
@@ -169,6 +189,15 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
           <div className="space-y-3">
             <CheckCircle className="w-8 h-8 mx-auto text-green-500" />
             <p className="text-green-600 font-medium">Processing Complete</p>
+            <Button
+              onClick={() => clearImage(type)}
+              variant="outline"
+              size="sm"
+              className="rounded-full px-4"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Change Image
+            </Button>
           </div>
         ) : (
           <div className="space-y-3">
@@ -194,7 +223,18 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
       {/* Preview */}
       {image && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gray-700">Preview:</h4>
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium text-gray-700">Preview:</h4>
+            <Button
+              onClick={() => clearImage(type)}
+              variant="ghost"
+              size="sm"
+              className="text-red-600 hover:text-red-800 hover:bg-red-50"
+            >
+              <X className="w-4 h-4 mr-1" />
+              Remove
+            </Button>
+          </div>
           <div className="border rounded-lg overflow-hidden">
             <img
               src={image}
@@ -236,6 +276,7 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
           <li>• Upload clear screenshots of both Multiplier tables</li>
           <li>• Ensure text is readable and not blurry</li>
           <li>• Both uploads must complete before processing continues</li>
+          <li>• Use the "Change Image" or "Remove" buttons to replace images if needed</li>
         </ul>
       </div>
     </div>
