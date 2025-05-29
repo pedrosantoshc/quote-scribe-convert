@@ -1,17 +1,13 @@
 import { ParsedField, QuoteData } from '../components/QuoteGenerator';
 
-export const parseOCRText = (text: string): Omit<QuoteData, 'exchangeRate'> => {
+export const parseOCRText = (text: string): { amountYouPay: ParsedField[]; amountEmployeeGets: ParsedField[]; localCurrency: string } => {
   console.log('Parsing OCR text:', text);
 
   const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
   
   const amountYouPay: ParsedField[] = [];
   const amountEmployeeGets: ParsedField[] = [];
-  const setupSummary: ParsedField[] = [];
-
-  let currentSection = '';
   let detectedCurrency = 'USD';
-  let alternateCurrency = 'EUR';
 
   // Currency detection patterns
   const currencyPattern = /\b(USD|EUR|GBP|CLP|ARS|BRL|MXN|COP|PEN|BDT|INR|SGD|AUD|CAD|CHF|JPY|CNY)\b/gi;
@@ -24,21 +20,27 @@ export const parseOCRText = (text: string): Omit<QuoteData, 'exchangeRate'> => {
   const currencyArray = Array.from(allCurrencies);
   if (currencyArray.length > 0) {
     detectedCurrency = currencyArray[0];
-    alternateCurrency = currencyArray.includes('USD') && detectedCurrency !== 'USD' ? 'USD' : 'EUR';
   }
 
-  console.log('Detected currencies:', currencyArray, 'Main:', detectedCurrency, 'Alt:', alternateCurrency);
+  console.log('Detected currencies:', currencyArray, 'Main:', detectedCurrency);
 
   // Section headers detection
   const sectionPatterns = {
     youPay: /amount\s+you\s+pay|employer\s+cost|total\s+cost/i,
     employeeGets: /amount\s+employee\s+gets|employee\s+receives|net\s+salary/i,
-    setup: /setup|security\s+deposit|ontop\s+fee|initial\s+cost/i
   };
+
+  let currentSection = '';
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
+
+    // Skip header lines containing "Country" or "Gross Monthly Salary" headers
+    if (line.toLowerCase().includes('country') || 
+        line.toLowerCase().includes('gross monthly salary')) {
+      continue;
+    }
 
     // Detect section headers
     if (sectionPatterns.youPay.test(line)) {
@@ -49,11 +51,6 @@ export const parseOCRText = (text: string): Omit<QuoteData, 'exchangeRate'> => {
     if (sectionPatterns.employeeGets.test(line)) {
       currentSection = 'employeeGets';
       console.log('Found "Amount Employee Gets" section at line:', line);
-      continue;
-    }
-    if (sectionPatterns.setup.test(line)) {
-      currentSection = 'setup';
-      console.log('Found "Setup" section at line:', line);
       continue;
     }
 
@@ -69,8 +66,8 @@ export const parseOCRText = (text: string): Omit<QuoteData, 'exchangeRate'> => {
         const currency = currMatch[0].toUpperCase();
         const numberStr = match.replace(currencyPattern, '').trim();
         
-        // Clean number: remove thousand separators but keep decimal points
-        const cleanNumber = numberStr.replace(/,(?=\d{3})/g, '').replace(/\.(?=\d{3})/g, '');
+        // Clean number: remove all thousand separators, keep only decimal point
+        const cleanNumber = numberStr.replace(/,/g, '').replace(/\.(?=\d{3})/g, '');
         const amount = parseFloat(cleanNumber);
 
         if (!isNaN(amount) && amount > 0) {
@@ -105,59 +102,30 @@ export const parseOCRText = (text: string): Omit<QuoteData, 'exchangeRate'> => {
           currency: amountData.currency
         };
 
-        switch (currentSection) {
-          case 'youPay':
+        if (currentSection === 'youPay') {
+          amountYouPay.push(field);
+          console.log('Parsed "You Pay" field:', field);
+        } else if (currentSection === 'employeeGets') {
+          amountEmployeeGets.push(field);
+          console.log('Parsed "Employee Gets" field:', field);
+        } else {
+          // If no section detected yet, try to categorize by keywords
+          const lowerLabel = cleanLabel.toLowerCase();
+          if (lowerLabel.includes('gross') || lowerLabel.includes('employer') || lowerLabel.includes('contribution')) {
             amountYouPay.push(field);
-            break;
-          case 'employeeGets':
+            console.log('Auto-categorized as "You Pay" field:', field);
+          } else if (lowerLabel.includes('net') || lowerLabel.includes('employee') || lowerLabel.includes('take home')) {
             amountEmployeeGets.push(field);
-            break;
-          case 'setup':
-            setupSummary.push(field);
-            break;
-          default:
-            // If no section detected yet, try to categorize by keywords
-            const lowerLabel = cleanLabel.toLowerCase();
-            if (lowerLabel.includes('gross') || lowerLabel.includes('employer') || lowerLabel.includes('contribution')) {
-              amountYouPay.push(field);
-            } else if (lowerLabel.includes('net') || lowerLabel.includes('employee') || lowerLabel.includes('take home')) {
-              amountEmployeeGets.push(field);
-            } else if (lowerLabel.includes('setup') || lowerLabel.includes('deposit') || lowerLabel.includes('fee')) {
-              setupSummary.push(field);
-            }
+            console.log('Auto-categorized as "Employee Gets" field:', field);
+          }
         }
-
-        console.log('Parsed field:', field, 'in section:', currentSection);
       }
     }
   }
 
-  // Add calculated fields if we have a gross salary
-  const grossSalaryField = amountYouPay.find(f => 
-    f.label.toLowerCase().includes('gross') || f.label.toLowerCase().includes('salary')
-  );
-
-  if (grossSalaryField && setupSummary.length === 0) {
-    setupSummary.push({
-      label: 'Security Deposit (1/12 salary)',
-      amount: Math.round(grossSalaryField.amount / 12 * 100) / 100,
-      currency: grossSalaryField.currency
-    });
-    setupSummary.push({
-      label: 'Ontop EOR Fee',
-      amount: Math.round(grossSalaryField.amount * 0.05 * 100) / 100, // 5% default
-      currency: grossSalaryField.currency
-    });
-  }
-
-  const result = {
+  return {
     amountYouPay,
     amountEmployeeGets,
-    setupSummary,
-    localCurrency: detectedCurrency,
-    alternateCurrency
+    localCurrency: detectedCurrency
   };
-
-  console.log('Final parsed result:', result);
-  return result;
 };

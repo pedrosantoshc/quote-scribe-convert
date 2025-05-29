@@ -6,91 +6,125 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { QuoteData, ParsedField } from './QuoteGenerator';
+import { QuoteData, ParsedField, FormData } from './QuoteGenerator';
 
 interface ManualEntryProps {
   onSubmit: (data: QuoteData) => void;
   onCancel: () => void;
+  formData: FormData;
 }
 
-const ManualEntry: React.FC<ManualEntryProps> = ({ onSubmit, onCancel }) => {
-  const [amountYouPay, setAmountYouPay] = useState<ParsedField[]>([
-    { label: 'Gross Salary', amount: 0, currency: 'USD' }
+const ManualEntry: React.FC<ManualEntryProps> = ({ onSubmit, onCancel, formData }) => {
+  const [payFields, setPayFields] = useState<ParsedField[]>([
+    { label: 'Gross Monthly Salary', amount: 0, currency: 'USD' }
   ]);
-  const [amountEmployeeGets, setAmountEmployeeGets] = useState<ParsedField[]>([
+  const [employeeFields, setEmployeeFields] = useState<ParsedField[]>([
     { label: 'Net Salary', amount: 0, currency: 'USD' }
   ]);
-  const [setupSummary, setSetupSummary] = useState<ParsedField[]>([
-    { label: 'Security Deposit', amount: 0, currency: 'USD' }
-  ]);
-  const [localCurrency, setLocalCurrency] = useState('USD');
-  const [alternateCurrency, setAlternateCurrency] = useState('EUR');
 
   const currencies = ['USD', 'EUR', 'GBP', 'CLP', 'ARS', 'BRL', 'MXN', 'COP', 'PEN', 'BDT', 'INR', 'SGD', 'AUD', 'CAD', 'CHF', 'JPY', 'CNY'];
 
-  const addField = (section: 'youPay' | 'employeeGets' | 'setup') => {
-    const newField: ParsedField = { label: '', amount: 0, currency: localCurrency };
+  const addField = (section: 'pay' | 'employee') => {
+    const newField: ParsedField = { label: '', amount: 0, currency: 'USD' };
     
     switch (section) {
-      case 'youPay':
-        setAmountYouPay([...amountYouPay, newField]);
+      case 'pay':
+        setPayFields([...payFields, newField]);
         break;
-      case 'employeeGets':
-        setAmountEmployeeGets([...amountEmployeeGets, newField]);
-        break;
-      case 'setup':
-        setSetupSummary([...setupSummary, newField]);
+      case 'employee':
+        setEmployeeFields([...employeeFields, newField]);
         break;
     }
   };
 
-  const removeField = (section: 'youPay' | 'employeeGets' | 'setup', index: number) => {
+  const removeField = (section: 'pay' | 'employee', index: number) => {
     switch (section) {
-      case 'youPay':
-        setAmountYouPay(amountYouPay.filter((_, i) => i !== index));
+      case 'pay':
+        setPayFields(payFields.filter((_, i) => i !== index));
         break;
-      case 'employeeGets':
-        setAmountEmployeeGets(amountEmployeeGets.filter((_, i) => i !== index));
-        break;
-      case 'setup':
-        setSetupSummary(setupSummary.filter((_, i) => i !== index));
+      case 'employee':
+        setEmployeeFields(employeeFields.filter((_, i) => i !== index));
         break;
     }
   };
 
-  const updateField = (section: 'youPay' | 'employeeGets' | 'setup', index: number, field: Partial<ParsedField>) => {
+  const updateField = (section: 'pay' | 'employee', index: number, field: Partial<ParsedField>) => {
     const updateArray = (arr: ParsedField[]) => 
       arr.map((item, i) => i === index ? { ...item, ...field } : item);
 
     switch (section) {
-      case 'youPay':
-        setAmountYouPay(updateArray(amountYouPay));
+      case 'pay':
+        setPayFields(updateArray(payFields));
         break;
-      case 'employeeGets':
-        setAmountEmployeeGets(updateArray(amountEmployeeGets));
-        break;
-      case 'setup':
-        setSetupSummary(updateArray(setupSummary));
+      case 'employee':
+        setEmployeeFields(updateArray(employeeFields));
         break;
     }
   };
 
   const handleSubmit = () => {
+    // Find gross salary
+    const grossSalaryField = payFields.find(f => 
+      f.label.toLowerCase().includes('gross') && f.label.toLowerCase().includes('salary')
+    );
+    
+    if (!grossSalaryField || grossSalaryField.amount <= 0) {
+      return;
+    }
+
+    const salary = grossSalaryField.amount;
+    const dismissalDeposit = Math.round(salary / 12 * 100) / 100;
+    const eorFeeLocal = formData.eorFeeUSD; // Assume same currency for manual entry
+
+    // Create enhanced pay fields with calculated values
+    const enhancedPayFields = [
+      ...payFields.filter(f => f.label.trim() && f.amount > 0),
+      {
+        label: 'Dismissal Deposit (1/12 salary)',
+        amount: dismissalDeposit,
+        currency: grossSalaryField.currency
+      },
+      {
+        label: 'Ontop EOR Fee',
+        amount: eorFeeLocal,
+        currency: grossSalaryField.currency
+      }
+    ];
+
+    const totalYouPay = enhancedPayFields.reduce((sum, field) => sum + field.amount, 0);
+
+    const setupSummary: ParsedField[] = [
+      {
+        label: 'Security Deposit (1 month salary)',
+        amount: salary,
+        currency: grossSalaryField.currency
+      },
+      {
+        label: 'Ontop EOR Fee',
+        amount: eorFeeLocal,
+        currency: grossSalaryField.currency
+      }
+    ];
+
     const data: QuoteData = {
-      amountYouPay: amountYouPay.filter(f => f.label.trim() && f.amount > 0),
-      amountEmployeeGets: amountEmployeeGets.filter(f => f.label.trim() && f.amount > 0),
-      setupSummary: setupSummary.filter(f => f.label.trim() && f.amount > 0),
-      localCurrency,
-      alternateCurrency,
-      exchangeRate: 1
+      payFields: enhancedPayFields,
+      employeeFields: employeeFields.filter(f => f.label.trim() && f.amount > 0),
+      setupSummary,
+      localCurrency: grossSalaryField.currency,
+      quoteCurrency: formData.quoteCurrency,
+      exchangeRate: 1, // Manual entry assumes no conversion needed
+      dismissalDeposit,
+      eorFeeLocal,
+      totalYouPay
     };
+    
     onSubmit(data);
   };
 
   const FieldEditor = ({ title, fields, section, colorClass }: {
     title: string;
     fields: ParsedField[];
-    section: 'youPay' | 'employeeGets' | 'setup';
+    section: 'pay' | 'employee';
     colorClass: string;
   }) => (
     <Card className="rounded-2xl shadow-lg border-0">
@@ -129,6 +163,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ onSubmit, onCancel }) => {
               <Input
                 id={`${section}-amount-${index}`}
                 type="number"
+                step="0.01"
                 value={field.amount || ''}
                 onChange={(e) => updateField(section, index, { amount: parseFloat(e.target.value) || 0 })}
                 placeholder="0.00"
@@ -177,7 +212,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ onSubmit, onCancel }) => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-gray-900">Manual Entry</h2>
-          <p className="text-gray-600 mt-1">Enter your quote details manually</p>
+          <p className="text-gray-600 mt-1">Enter your quote details manually for {formData.clientName}</p>
         </div>
         <div className="flex gap-3">
           <Button
@@ -198,66 +233,20 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ onSubmit, onCancel }) => {
         </div>
       </div>
 
-      {/* Currency Settings */}
-      <Card className="rounded-2xl shadow-lg border-0">
-        <CardHeader>
-          <CardTitle>Currency Settings</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <Label htmlFor="local-currency" className="text-sm font-medium">
-              Local Currency
-            </Label>
-            <Select value={localCurrency} onValueChange={setLocalCurrency}>
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {currencies.map((curr) => (
-                  <SelectItem key={curr} value={curr}>{curr}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="alternate-currency" className="text-sm font-medium">
-              Alternate Currency
-            </Label>
-            <Select value={alternateCurrency} onValueChange={setAlternateCurrency}>
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {currencies.map((curr) => (
-                  <SelectItem key={curr} value={curr}>{curr}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Field Editors */}
       <div className="grid grid-cols-1 gap-8">
         <FieldEditor
           title="Amount You Pay"
-          fields={amountYouPay}
-          section="youPay"
+          fields={payFields}
+          section="pay"
           colorClass="bg-[#FF5A71]"
         />
         
         <FieldEditor
           title="Amount Employee Gets"
-          fields={amountEmployeeGets}
-          section="employeeGets"
+          fields={employeeFields}
+          section="employee"
           colorClass="bg-green-600"
-        />
-        
-        <FieldEditor
-          title="Setup Summary"
-          fields={setupSummary}
-          section="setup"
-          colorClass="bg-blue-600"
         />
       </div>
     </div>
