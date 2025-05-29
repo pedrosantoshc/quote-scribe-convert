@@ -1,0 +1,164 @@
+
+import React, { useState } from 'react';
+import { ToggleLeft, ToggleRight } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { QuoteData } from './QuoteGenerator';
+import { convertAmount } from '../utils/currencyConverter';
+
+interface QuoteTablesProps {
+  data: QuoteData;
+}
+
+const QuoteTables: React.FC<QuoteTablesProps> = ({ data }) => {
+  const [showAlternateCurrency, setShowAlternateCurrency] = useState(false);
+
+  const formatCurrency = (amount: number, currency: string): string => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
+  const getConvertedAmount = (amount: number, originalCurrency: string): number => {
+    if (!data.exchangeRate) return amount;
+    
+    if (showAlternateCurrency) {
+      return convertAmount(amount, originalCurrency, data.alternateCurrency, {
+        base: 'USD',
+        date: '',
+        rates: { [data.alternateCurrency]: data.exchangeRate }
+      });
+    }
+    return amount;
+  };
+
+  const getCurrentCurrency = (): string => {
+    return showAlternateCurrency ? data.alternateCurrency : data.localCurrency;
+  };
+
+  const TableCard = ({ title, fields, colorClass }: { 
+    title: string; 
+    fields: any[]; 
+    colorClass: string;
+  }) => (
+    <Card className="rounded-2xl shadow-lg border-0 overflow-hidden">
+      <CardHeader className={`${colorClass} text-white`}>
+        <CardTitle className="text-xl font-semibold">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {fields.length === 0 ? (
+          <div className="p-6 text-center text-gray-500">
+            No data available for this section
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Description</th>
+                  <th className="px-6 py-4 text-right text-sm font-medium text-gray-900">
+                    Amount ({getCurrentCurrency()})
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {fields.map((field, index) => {
+                  const displayAmount = getConvertedAmount(field.amount, field.currency);
+                  return (
+                    <tr key={index} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 text-sm text-gray-900">{field.label}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
+                        {formatCurrency(displayAmount, getCurrentCurrency())}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {fields.length > 0 && (
+                  <tr className="bg-gray-50 font-semibold">
+                    <td className="px-6 py-4 text-sm text-gray-900">Total</td>
+                    <td className="px-6 py-4 text-sm text-gray-900 text-right">
+                      {formatCurrency(
+                        fields.reduce((sum, field) => sum + getConvertedAmount(field.amount, field.currency), 0),
+                        getCurrentCurrency()
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <div className="space-y-8">
+      {/* Header with Currency Toggle */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">Quote Summary</h2>
+          <p className="text-gray-600 mt-1">Professional quote generated from Multiplier data</p>
+        </div>
+        
+        <div className="flex items-center space-x-3 bg-white rounded-full p-2 shadow-md border">
+          <span className={`text-sm font-medium transition-colors ${!showAlternateCurrency ? 'text-[#FF5A71]' : 'text-gray-500'}`}>
+            {data.localCurrency}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowAlternateCurrency(!showAlternateCurrency)}
+            className="p-1 h-8 w-8 rounded-full"
+          >
+            {showAlternateCurrency ? (
+              <ToggleRight className="w-6 h-6 text-[#FF5A71]" />
+            ) : (
+              <ToggleLeft className="w-6 h-6 text-gray-400" />
+            )}
+          </Button>
+          <span className={`text-sm font-medium transition-colors ${showAlternateCurrency ? 'text-[#FF5A71]' : 'text-gray-500'}`}>
+            {data.alternateCurrency}
+          </span>
+        </div>
+      </div>
+
+      {/* Tables Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <TableCard
+          title="Amount You Pay"
+          fields={data.amountYouPay}
+          colorClass="bg-[#FF5A71]"
+        />
+        
+        <TableCard
+          title="Amount Employee Gets"
+          fields={data.amountEmployeeGets}
+          colorClass="bg-green-600"
+        />
+        
+        <TableCard
+          title="Setup Summary"
+          fields={data.setupSummary}
+          colorClass="bg-blue-600"
+        />
+      </div>
+
+      {/* Exchange Rate Info */}
+      {showAlternateCurrency && data.exchangeRate !== 1 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800">
+            <strong>Exchange Rate:</strong> 1 {data.localCurrency} = {data.exchangeRate.toFixed(4)} {data.alternateCurrency}
+            <br />
+            <em>Rates are indicative and may vary. Contracts are always processed in local currency.</em>
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default QuoteTables;
