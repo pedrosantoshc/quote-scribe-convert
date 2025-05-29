@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Upload, Download, RefreshCw, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import ImageUpload from './ImageUpload';
 import QuoteTables from './QuoteTables';
 import ManualEntry from './ManualEntry';
+import DebugPanel from './DebugPanel';
 import { generatePDF } from '../utils/pdfGenerator';
 import { parseOCRText } from '../utils/ocrParser';
 import { convertCurrency, CurrencyRates } from '../utils/currencyConverter';
@@ -32,12 +32,14 @@ const QuoteGenerator = () => {
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currencyRates, setCurrencyRates] = useState<CurrencyRates | null>(null);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
   const quoteRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const handleOCRComplete = async (extractedText: string) => {
     setOcrText(extractedText);
     setIsProcessing(true);
+    setShowDebugPanel(true); // Show debug panel when OCR completes
 
     try {
       console.log('OCR Text extracted:', extractedText);
@@ -112,6 +114,7 @@ const QuoteGenerator = () => {
     setQuoteData(null);
     setShowManualEntry(false);
     setIsProcessing(false);
+    setShowDebugPanel(false);
   };
 
   return (
@@ -190,8 +193,15 @@ const QuoteGenerator = () => {
         ) : showManualEntry ? (
           <ManualEntry onSubmit={handleManualData} onCancel={() => setShowManualEntry(false)} />
         ) : (
-          <div ref={quoteRef}>
-            <QuoteTables data={quoteData!} />
+          <div className="space-y-8">
+            <div ref={quoteRef}>
+              <QuoteTables data={quoteData!} />
+            </div>
+
+            {/* Debug Panel - Show when OCR has been processed */}
+            {showDebugPanel && (
+              <DebugPanel ocrText={ocrText} parsedData={quoteData} />
+            )}
           </div>
         )}
 
