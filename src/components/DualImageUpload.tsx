@@ -1,7 +1,8 @@
 
 import React, { useState, useRef } from 'react';
-import { Upload, Camera, Loader2, CheckCircle, X } from 'lucide-react';
+import { Upload, Camera, Loader2, CheckCircle, X, ChevronDown, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import Tesseract from 'tesseract.js';
 
 interface DualImageUploadProps {
@@ -18,6 +19,8 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
   const [employeeOcrText, setEmployeeOcrText] = useState<string>('');
   const [payOcrDone, setPayOcrDone] = useState(false);
   const [employeeOcrDone, setEmployeeOcrDone] = useState(false);
+  const [showPayOcr, setShowPayOcr] = useState(false);
+  const [showEmployeeOcr, setShowEmployeeOcr] = useState(false);
   
   const payFileInputRef = useRef<HTMLInputElement>(null);
   const employeeFileInputRef = useRef<HTMLInputElement>(null);
@@ -64,13 +67,6 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
     }
   };
 
-  // Trigger callback when both OCR processes are complete
-  React.useEffect(() => {
-    if (payOcrDone && employeeOcrDone) {
-      onOCRComplete(payOcrText, employeeOcrText);
-    }
-  }, [payOcrDone, employeeOcrDone, payOcrText, employeeOcrText, onOCRComplete]);
-
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>, type: 'pay' | 'employee') => {
     const file = event.target.files?.[0];
     if (file) {
@@ -80,9 +76,11 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
         if (type === 'pay') {
           setPayImage(imageDataUrl);
           setPayOcrDone(false);
+          setPayOcrText('');
         } else {
           setEmployeeImage(imageDataUrl);
           setEmployeeOcrDone(false);
+          setEmployeeOcrText('');
         }
         processImage(imageDataUrl, type);
       };
@@ -100,9 +98,11 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
         if (type === 'pay') {
           setPayImage(imageDataUrl);
           setPayOcrDone(false);
+          setPayOcrText('');
         } else {
           setEmployeeImage(imageDataUrl);
           setEmployeeOcrDone(false);
+          setEmployeeOcrText('');
         }
         processImage(imageDataUrl, type);
       };
@@ -134,27 +134,41 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
     }
   };
 
+  const handleAnalyzeScreenshots = () => {
+    if (payOcrDone && employeeOcrDone && payOcrText && employeeOcrText) {
+      onOCRComplete(payOcrText, employeeOcrText);
+    }
+  };
+
+  const canAnalyze = payOcrDone && employeeOcrDone && payOcrText && employeeOcrText && !isProcessing;
+
   const UploadArea = ({ 
     title, 
     type, 
     image, 
     progress, 
     isDone, 
-    fileInputRef 
+    fileInputRef,
+    ocrText,
+    showOcr,
+    setShowOcr
   }: { 
     title: string; 
     type: 'pay' | 'employee'; 
     image: string | null; 
     progress: number; 
     isDone: boolean; 
-    fileInputRef: React.RefObject<HTMLInputElement>; 
+    fileInputRef: React.RefObject<HTMLInputElement>;
+    ocrText: string;
+    showOcr: boolean;
+    setShowOcr: (show: boolean) => void;
   }) => (
     <div className="space-y-4">
       <h3 className="text-lg font-medium text-gray-900">{title}</h3>
       
       <div
         className={`border-2 border-dashed rounded-xl p-6 text-center transition-all duration-200 ${
-          isProcessing && !isDone
+          !isDone && image
             ? 'border-[#FF5A71] bg-[#FFDDE0]/20' 
             : isDone
             ? 'border-green-500 bg-green-50'
@@ -171,7 +185,7 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
           className="hidden"
         />
 
-        {isProcessing && !isDone ? (
+        {!isDone && image ? (
           <div className="space-y-3">
             <Loader2 className="w-8 h-8 mx-auto text-[#FF5A71] animate-spin" />
             <div>
@@ -188,7 +202,7 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
         ) : isDone ? (
           <div className="space-y-3">
             <CheckCircle className="w-8 h-8 mx-auto text-green-500" />
-            <p className="text-green-600 font-medium">Processing Complete</p>
+            <p className="text-green-600 font-medium">OCR Complete</p>
             <Button
               onClick={() => clearImage(type)}
               variant="outline"
@@ -244,6 +258,26 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
           </div>
         </div>
       )}
+
+      {/* Raw OCR Text */}
+      {isDone && ocrText && (
+        <Collapsible open={showOcr} onOpenChange={setShowOcr}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
+            <div className="flex items-center">
+              <Eye className="w-4 h-4 mr-2" />
+              <span className="font-medium text-gray-900">Show Raw OCR</span>
+            </div>
+            <ChevronDown className={`w-4 h-4 transition-transform ${showOcr ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="mt-3 p-4 bg-gray-900 rounded-lg">
+              <pre className="text-sm text-green-400 font-mono whitespace-pre-wrap overflow-auto max-h-40 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+                {ocrText}
+              </pre>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </div>
   );
 
@@ -257,6 +291,9 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
           progress={payOcrProgress}
           isDone={payOcrDone}
           fileInputRef={payFileInputRef}
+          ocrText={payOcrText}
+          showOcr={showPayOcr}
+          setShowOcr={setShowPayOcr}
         />
         
         <UploadArea
@@ -266,8 +303,24 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
           progress={employeeOcrProgress}
           isDone={employeeOcrDone}
           fileInputRef={employeeFileInputRef}
+          ocrText={employeeOcrText}
+          showOcr={showEmployeeOcr}
+          setShowOcr={setShowEmployeeOcr}
         />
       </div>
+
+      {/* Analyze Button */}
+      {canAnalyze && (
+        <div className="flex justify-center">
+          <Button
+            onClick={handleAnalyzeScreenshots}
+            disabled={!canAnalyze}
+            className="bg-[#FF5A71] hover:bg-[#FF4461] text-white rounded-full px-8 py-3 shadow-lg transition-all duration-200 hover:shadow-xl"
+          >
+            Analyze Screenshots
+          </Button>
+        </div>
+      )}
 
       {/* Instructions */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -275,8 +328,8 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
         <ul className="text-sm text-blue-800 space-y-1">
           <li>• Upload clear screenshots of both Multiplier tables</li>
           <li>• Ensure text is readable and not blurry</li>
-          <li>• Both uploads must complete before processing continues</li>
-          <li>• Use the "Change Image" or "Remove" buttons to replace images if needed</li>
+          <li>• Use "Show Raw OCR" to verify the text was extracted correctly</li>
+          <li>• Click "Analyze Screenshots" when both uploads are complete</li>
         </ul>
       </div>
     </div>

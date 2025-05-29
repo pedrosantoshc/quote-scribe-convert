@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Upload, Download, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -70,28 +69,21 @@ const QuoteGenerator = () => {
     try {
       console.log('OCR Texts extracted:', {pay: payText, employee: employeeText});
       
-      // Parse both OCR texts
-      const payParsed = parseOCRText(payText);
-      const employeeParsed = parseOCRText(employeeText);
+      // Parse both OCR texts using new separate functions
+      const { parsePayScreenshot, parseEmployeeScreenshot } = await import('../utils/ocrParser');
+      
+      const payParsed = parsePayScreenshot(payText);
+      const employeeParsed = parseEmployeeScreenshot(employeeText);
       
       // Get currency conversion rates with error handling
       const rates = await convertCurrency();
       setCurrencyRates(rates);
 
-      // Find gross salary from pay fields
-      const grossSalaryField = payParsed.amountYouPay.find(f => 
-        f.label.toLowerCase().includes('gross') && f.label.toLowerCase().includes('salary')
-      );
-      
-      if (!grossSalaryField) {
-        throw new Error("Could not find Gross Monthly Salary in the Amount You Pay table. Please ensure the screenshot contains a clear 'Gross Monthly Salary' field.");
-      }
-
-      const salary = grossSalaryField.amount;
+      const salary = payParsed.grossSalary;
       const dismissalDeposit = Math.round(salary / 12 * 100) / 100;
       
       // Calculate exchange rate for local currency
-      const localCurrency = payParsed.localCurrency;
+      const localCurrency = payParsed.currency;
       const rateToLocal = rates.rates[localCurrency] || 1;
       
       // Calculate EOR fee in local currency
@@ -100,7 +92,7 @@ const QuoteGenerator = () => {
         : formData.eorFeeUSD;
 
       // Calculate total you pay
-      const payFieldsTotal = payParsed.amountYouPay.reduce((sum, field) => sum + field.amount, 0);
+      const payFieldsTotal = payParsed.payFields.reduce((sum, field) => sum + field.amount, 0);
       const totalYouPay = payFieldsTotal + dismissalDeposit + eorFeeLocal;
 
       // Create setup summary
@@ -119,7 +111,7 @@ const QuoteGenerator = () => {
 
       const data: QuoteData = {
         payFields: [
-          ...payParsed.amountYouPay,
+          ...payParsed.payFields,
           {
             label: 'Dismissal Deposit (1/12 salary)',
             amount: dismissalDeposit,
@@ -131,7 +123,7 @@ const QuoteGenerator = () => {
             currency: localCurrency
           }
         ],
-        employeeFields: employeeParsed.amountEmployeeGets,
+        employeeFields: employeeParsed.employeeFields,
         setupSummary,
         localCurrency,
         quoteCurrency: formData.quoteCurrency,
