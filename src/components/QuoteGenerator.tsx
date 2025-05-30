@@ -60,6 +60,167 @@ const QuoteGenerator = () => {
     setCurrentStep(2);
   };
 
+  const handleAnalyzeScreenshots = async () => {
+    if (!ocrTexts.pay || !ocrTexts.employee) {
+      toast({
+        variant: "destructive",
+        title: "Missing Screenshots",
+        description: "Please upload both screenshots before analyzing.",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    setLastError('');
+
+    try {
+      console.log('Analyzing OCR texts:', {pay: ocrTexts.pay, employee: ocrTexts.employee});
+      
+      // Parse both OCR texts using separate functions
+      const { parsePayScreenshot, parseEmployeeScreenshot, getLocalCurrency } = await import('../utils/ocrParser');
+      
+      const payParsed = parsePayScreenshot(ocrTexts.pay);
+      const employeeParsed = parseEmployeeScreenshot(ocrTexts.employee);
+      
+      // Get currency conversion rates with error handling
+      const rates = await convertCurrency();
+      setCurrencyRates(rates);
+
+      const localCurrency = getLocalCurrency(formData.country);
+      const rateToLocal = rates.rates[localCurrency] || 1;
+      const rateToUSD = 1 / rateToLocal;
+
+      // Convert amounts based on quote currency
+      const convertedPayFields = payParsed.payFields.map(field => {
+        let localAmount, usdAmount;
+        
+        if (formData.quoteCurrency === 'USD') {
+          usdAmount = field.amount;
+          localAmount = field.amount * rateToLocal;
+        } else {
+          localAmount = field.amount;
+          usdAmount = field.amount * rateToUSD;
+        }
+
+        return {
+          ...field,
+          localAmount,
+          usdAmount
+        };
+      });
+
+      const convertedEmployeeFields = employeeParsed.employeeFields.map(field => {
+        let localAmount, usdAmount;
+        
+        if (formData.quoteCurrency === 'USD') {
+          usdAmount = field.amount;
+          localAmount = field.amount * rateToLocal;
+        } else {
+          localAmount = field.amount;
+          usdAmount = field.amount * rateToUSD;
+        }
+
+        return {
+          ...field,
+          localAmount,
+          usdAmount
+        };
+      });
+
+      // Find the gross salary from the first item (should be "Gross Monthly Salary")
+      const grossSalaryField = convertedPayFields.find(field => 
+        field.label.toLowerCase().includes('gross') && field.label.toLowerCase().includes('salary')
+      );
+      
+      if (!grossSalaryField) {
+        throw new Error("Could not find Gross Monthly Salary in the parsed data");
+      }
+
+      const grossSalary = grossSalaryField.localAmount || grossSalaryField.amount;
+
+      // Add computed fields to payFields
+      const dismissalDeposit = grossSalary / 12;
+      const eorFeeLocal = formData.quoteCurrency === 'USD' 
+        ? formData.eorFeeUSD * rateToLocal 
+        : formData.eorFeeUSD;
+      const eorFeeUSD = formData.quoteCurrency === 'USD' 
+        ? formData.eorFeeUSD 
+        : formData.eorFeeUSD * rateToUSD;
+
+      // Find total monthly cost from parsed data
+      const totalCostField = convertedPayFields.find(field => 
+        field.label.toLowerCase().includes('total') && field.label.toLowerCase().includes('cost')
+      );
+      
+      const totalMonthlyCost = totalCostField ? 
+        (totalCostField.localAmount || totalCostField.amount) : 
+        convertedPayFields.reduce((sum, field) => sum + (field.localAmount || field.amount), 0);
+
+      const totalEmployerCost = totalMonthlyCost + dismissalDeposit + eorFeeLocal;
+
+      // Add computed rows to pay fields
+      const finalPayFields = [
+        ...convertedPayFields,
+        {
+          label: 'Dismissal Deposit (1/12 salary)',
+          amount: dismissalDeposit,
+          currency: localCurrency,
+          localAmount: dismissalDeposit,
+          usdAmount: dismissalDeposit * rateToUSD
+        },
+        {
+          label: 'Ontop EOR Fee',
+          amount: formData.eorFeeUSD,
+          currency: formData.quoteCurrency === 'USD' ? 'USD' : localCurrency,
+          localAmount: eorFeeLocal,
+          usdAmount: eorFeeUSD
+        },
+        {
+          label: 'Total Employer Cost',
+          amount: totalEmployerCost,
+          currency: localCurrency,
+          localAmount: totalEmployerCost,
+          usdAmount: totalEmployerCost * rateToUSD
+        }
+      ];
+
+      // Create setup summary (empty for now as requested)
+      const setupSummary: ParsedField[] = [];
+
+      const data: QuoteData = {
+        payFields: finalPayFields,
+        employeeFields: convertedEmployeeFields,
+        setupSummary,
+        localCurrency,
+        quoteCurrency: formData.quoteCurrency,
+        exchangeRate: rateToLocal,
+        dismissalDeposit,
+        eorFeeLocal,
+        totalYouPay: totalEmployerCost
+      };
+
+      setQuoteData(data);
+      setCurrentStep(3);
+
+      toast({
+        title: "Success!",
+        description: "Quote data extracted and calculated successfully.",
+      });
+    } catch (error) {
+      console.error('Error processing OCR:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process the images. Please try again.';
+      setLastError(errorMessage);
+      
+      toast({
+        variant: "destructive",
+        title: "Processing Error",
+        description: errorMessage,
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleDualOCRComplete = async (payText: string, employeeText: string) => {
     setOcrTexts({pay: payText, employee: employeeText});
     setIsProcessing(true);
