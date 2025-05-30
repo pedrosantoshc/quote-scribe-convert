@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { QuoteData, FormData } from './QuoteGenerator';
+import { QuoteData, FormData, ParsedField } from './QuoteGenerator';
 
 interface QuoteTablesProps {
   data: QuoteData;
@@ -18,60 +18,82 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
     return `${formatNumber(amount)} ${currency}`;
   };
 
-  const TableCard = ({ title, fields, colorClass, showTotal = false, totalLabel = "Total" }: { 
+  // Calculate totals for a set of fields
+  const calculateTotal = (fields: ParsedField[]) => {
+    return fields.reduce((acc, field) => ({
+      localTotal: acc.localTotal + (field.localAmount || field.amount),
+      usdTotal: acc.usdTotal + (field.usdAmount || (field.amount / data.exchangeRate))
+    }), { localTotal: 0, usdTotal: 0 });
+  };
+
+  const TableCard = ({ title, fields, colorClass, showTotal = true }: { 
     title: string; 
-    fields: any[]; 
+    fields: ParsedField[]; 
     colorClass: string;
     showTotal?: boolean;
-    totalLabel?: string;
-  }) => (
-    <Card className="rounded-2xl shadow-lg border-0 overflow-hidden">
-      <CardHeader className={`${colorClass} text-white`}>
-        <CardTitle className="text-xl font-semibold">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="p-0">
-        {fields.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">
-            No data available for this section
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Description</th>
-                  <th className="px-6 py-4 text-right text-sm font-medium text-gray-900">
-                    Local ({data.localCurrency})
-                  </th>
-                  <th className="px-6 py-4 text-right text-sm font-medium text-gray-900">
-                    USD
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {fields.map((field, index) => {
-                  const isTotal = field.label?.toLowerCase().includes('total');
-                  const rowClass = isTotal ? "bg-gray-50 font-semibold" : "hover:bg-gray-50 transition-colors";
-                  
-                  return (
-                    <tr key={index} className={rowClass}>
-                      <td className="px-6 py-4 text-sm text-gray-900">{field.label}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
-                        {formatCurrency(field.localAmount || field.amount, data.localCurrency)}
+  }) => {
+    const totals = calculateTotal(fields);
+    
+    return (
+      <Card className="rounded-2xl shadow-lg border-0 overflow-hidden">
+        <CardHeader className={`${colorClass} text-white`}>
+          <CardTitle className="text-xl font-semibold">{title}</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {fields.length === 0 ? (
+            <div className="p-6 text-center text-gray-500">
+              No data available for this section
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Description</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-900">
+                      Local ({data.localCurrency})
+                    </th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-900">
+                      USD
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {fields.map((field, index) => {
+                    const isTotal = field.label?.toLowerCase().includes('total');
+                    const rowClass = isTotal ? "bg-gray-50 font-semibold" : "hover:bg-gray-50 transition-colors";
+                    
+                    return (
+                      <tr key={index} className={rowClass}>
+                        <td className="px-6 py-4 text-sm text-gray-900">{field.label}</td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
+                          {formatCurrency(field.localAmount || field.amount, data.localCurrency)}
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
+                          {formatCurrency(field.usdAmount || (field.amount / data.exchangeRate), 'USD')}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {showTotal && fields.length > 0 && (
+                    <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
+                      <td className="px-6 py-4 text-sm text-gray-900">Total</td>
+                      <td className="px-6 py-4 text-sm font-bold text-gray-900 text-right">
+                        {formatCurrency(totals.localTotal, data.localCurrency)}
                       </td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
-                        {formatCurrency(field.usdAmount || (field.amount / data.exchangeRate), 'USD')}
+                      <td className="px-6 py-4 text-sm font-bold text-gray-900 text-right">
+                        {formatCurrency(totals.usdTotal, 'USD')}
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <div className="space-y-8">

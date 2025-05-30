@@ -1,3 +1,4 @@
+
 import { ParsedField, QuoteData } from '../components/QuoteGenerator';
 
 // Country to currency mapping
@@ -30,6 +31,57 @@ export const getLocalCurrency = (country: string): string => {
   return COUNTRY_CURRENCY_MAP[country] || 'USD';
 };
 
+// Utility function for consistent currency conversion
+export const convertAmount = (amount: number, sourceCurrency: string, localCurrency: string, rateToLocal: number, rateToUSD: number) => {
+  if (sourceCurrency === 'USD') {
+    return {
+      usdAmount: amount,
+      localAmount: amount * rateToLocal
+    };
+  } else {
+    return {
+      localAmount: amount,
+      usdAmount: amount * rateToUSD
+    };
+  }
+};
+
+const parseLineAmount = (line: string): { label: string; amount: number; currency: string } | null => {
+  // Enhanced pattern matching for different line formats
+  const amountMatch = line.match(/^(.+?)\s+([A-Z]{3})\s*([\d,.]+)$/i) || 
+                     line.match(/^(.+?)\s*([\d,.]+)\s+([A-Z]{3})$/i) ||
+                     line.match(/^(.+?):\s*([A-Z]{3})\s*([\d,.]+)$/i);
+  
+  if (amountMatch) {
+    let label, amount, currency;
+    
+    if (amountMatch.length === 4 && amountMatch[3]) {
+      if (amountMatch[1].includes(':')) {
+        // Pattern: "Label: USD 123.45"
+        label = amountMatch[1].replace(':', '').trim();
+        currency = amountMatch[2];
+        amount = parseFloat(amountMatch[3].replace(/,/g, ''));
+      } else if (isNaN(parseFloat(amountMatch[2]))) {
+        // Pattern: "Label USD 123.45"
+        label = amountMatch[1].trim();
+        currency = amountMatch[2];
+        amount = parseFloat(amountMatch[3].replace(/,/g, ''));
+      } else {
+        // Pattern: "Label 123.45 USD"
+        label = amountMatch[1].trim();
+        amount = parseFloat(amountMatch[2].replace(/,/g, ''));
+        currency = amountMatch[3];
+      }
+    }
+
+    if (label && !isNaN(amount) && amount > 0) {
+      return { label, amount, currency };
+    }
+  }
+  
+  return null;
+};
+
 export const parsePayScreenshot = (text: string): { payFields: ParsedField[]; grossSalary: number; currency: string } => {
   console.log('Parsing Pay screenshot OCR text:', text);
 
@@ -46,10 +98,10 @@ export const parsePayScreenshot = (text: string): { payFields: ParsedField[]; gr
   }
 
   // Extract Gross Monthly Salary amount and currency
-  const gmsMatch = gmsLine.match(/([A-Z]{3})\s*([\d,.]+)/i);
-  if (gmsMatch) {
-    currency = gmsMatch[1];
-    grossSalary = parseFloat(gmsMatch[2].replace(/,/g, ''));
+  const gmsData = parseLineAmount(gmsLine);
+  if (gmsData) {
+    currency = gmsData.currency;
+    grossSalary = gmsData.amount;
     
     payFields.push({
       label: 'Gross Monthly Salary',
@@ -70,33 +122,14 @@ export const parsePayScreenshot = (text: string): { payFields: ParsedField[]; gr
       return;
     }
 
-    // Look for pattern: "Label USD 123.45" or "Label 123.45 USD"
-    const amountMatch = line.match(/^(.+?)\s+([A-Z]{3})\s*([\d,.]+)$/i) || 
-                       line.match(/^(.+?)\s*([\d,.]+)\s+([A-Z]{3})$/i);
-    
-    if (amountMatch) {
-      let label, amount, lineCurrency;
-      
-      if (amountMatch[3]) {
-        // Pattern: "Label 123.45 USD"
-        label = amountMatch[1].trim();
-        amount = parseFloat(amountMatch[2].replace(/,/g, ''));
-        lineCurrency = amountMatch[3];
-      } else {
-        // Pattern: "Label USD 123.45"
-        label = amountMatch[1].trim();
-        lineCurrency = amountMatch[2];
-        amount = parseFloat(amountMatch[3].replace(/,/g, ''));
-      }
-
-      if (label && !isNaN(amount) && amount > 0) {
-        payFields.push({
-          label: label,
-          amount: amount,
-          currency: lineCurrency
-        });
-        console.log('Parsed Pay field:', { label, amount, currency: lineCurrency });
-      }
+    const lineData = parseLineAmount(line);
+    if (lineData) {
+      payFields.push({
+        label: lineData.label,
+        amount: lineData.amount,
+        currency: lineData.currency
+      });
+      console.log('Parsed Pay field:', lineData);
     }
   });
 
@@ -119,33 +152,14 @@ export const parseEmployeeScreenshot = (text: string): { employeeFields: ParsedF
       return;
     }
 
-    // Look for pattern: "Label USD 123.45" or "Label 123.45 USD"
-    const amountMatch = line.match(/^(.+?)\s+([A-Z]{3})\s*([\d,.]+)$/i) || 
-                       line.match(/^(.+?)\s*([\d,.]+)\s+([A-Z]{3})$/i);
-    
-    if (amountMatch) {
-      let label, amount, currency;
-      
-      if (amountMatch[3]) {
-        // Pattern: "Label 123.45 USD"
-        label = amountMatch[1].trim();
-        amount = parseFloat(amountMatch[2].replace(/,/g, ''));
-        currency = amountMatch[3];
-      } else {
-        // Pattern: "Label USD 123.45"
-        label = amountMatch[1].trim();
-        currency = amountMatch[2];
-        amount = parseFloat(amountMatch[3].replace(/,/g, ''));
-      }
-
-      if (label && !isNaN(amount) && amount > 0) {
-        employeeFields.push({
-          label: label,
-          amount: amount,
-          currency: currency
-        });
-        console.log('Parsed Employee field:', { label, amount, currency });
-      }
+    const lineData = parseLineAmount(line);
+    if (lineData) {
+      employeeFields.push({
+        label: lineData.label,
+        amount: lineData.amount,
+        currency: lineData.currency
+      });
+      console.log('Parsed Employee field:', lineData);
     }
   });
 
