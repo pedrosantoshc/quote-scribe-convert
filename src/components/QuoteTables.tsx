@@ -11,12 +11,13 @@ interface QuoteTablesProps {
 // Define known subtotal patterns
 const PAY_SUBTOTALS = [
   'total employer contribution',
-  'total monthly cost',
-  'extra mandatory payments'
+  'extra mandatory payments',
+  'total employment cost'
 ];
 
 const EMPLOYEE_SUBTOTALS = [
-  'total employee contribution'
+  'total employee contribution',
+  'extra mandatory payments'
 ];
 
 // Function to detect subtotals
@@ -29,6 +30,20 @@ const isSubtotalRow = (label: string, tableType: 'pay' | 'employee'): boolean =>
 const isGrossSalary = (label: string): boolean => {
   return label.toLowerCase().includes('gross monthly salary') || 
          label.toLowerCase().includes('total gross monthly salary');
+};
+
+// Function to override labels
+const overrideLabel = (label: string, tableType: 'pay' | 'employee' | 'setup'): string => {
+  if (tableType === 'pay') {
+    // Only apply these overrides to the Amount You Pay table
+    if (label.toLowerCase() === 'total monthly cost') {
+      return 'Total Employment Cost';
+    }
+    if (label.toLowerCase() === 'total') {
+      return 'Total Monthly Cost';
+    }
+  }
+  return label;
 };
 
 const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
@@ -80,7 +95,7 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
   }) => {
     const totals = isPayTable ? calculatePayTableTotal(fields) : calculateTotal(fields);
     const showTotal = isPayTable || isSetupTable; // Only show totals for Pay and Setup tables
-    const tableType = isPayTable ? 'pay' : 'employee';
+    const tableType = isPayTable ? 'pay' : isEmployeeTable ? 'employee' : 'setup';
     
     return (
       <Card className="rounded-2xl shadow-lg border-0 overflow-hidden">
@@ -108,7 +123,7 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {fields.map((field, index) => {
-                    const isSubtotal = isSubtotalRow(field.label, tableType);
+                    const isSubtotal = isSubtotalRow(field.label, tableType as 'pay' | 'employee');
                     const isNetSalary = isEmployeeTable && field.label.toLowerCase().includes('net monthly salary');
                     const isGross = isGrossSalary(field.label);
                     
@@ -121,7 +136,9 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
                     
                     return (
                       <tr key={index} className={rowClass}>
-                        <td className="px-6 py-4 text-sm text-gray-900">{field.label}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {overrideLabel(field.label, tableType)}
+                        </td>
                         <td className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
                           {formatCurrency(field.localAmount || field.amount, data.localCurrency)}
                         </td>

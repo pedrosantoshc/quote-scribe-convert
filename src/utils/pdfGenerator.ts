@@ -16,69 +16,176 @@ export const generatePDF = async (element: HTMLElement, data: QuoteData, formDat
     pdfContainer.style.top = '-9999px';
     pdfContainer.style.left = '-9999px';
 
-    // Create PDF header with Ontop branding
+    // Apply PDF-specific styles
+    const pdfStyles = `
+      .pdf-container {
+        font-family: 'Arial', sans-serif;
+        color: #333;
+        line-height: 1.4;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 40px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #FF5A71;
+      }
+      .logo {
+        font-size: 32px;
+        color: #FF5A71;
+        font-weight: bold;
+      }
+      .logo-subtitle {
+        font-size: 14px;
+        color: #666;
+        margin-top: 5px;
+      }
+      .quote-info {
+        text-align: right;
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 4px solid #FF5A71;
+      }
+      .quote-info div {
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+      .table-container {
+        break-inside: avoid;
+        margin-bottom: 30px;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      }
+      .table-header {
+        padding: 15px;
+        color: white;
+        font-size: 18px;
+        font-weight: bold;
+      }
+      .amount-you-pay .table-header {
+        background: #FF5A71;
+      }
+      .amount-employee-gets .table-header {
+        background: #10B981;
+      }
+      .setup-summary .table-header {
+        background: #3B82F6;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+      }
+      th, td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      th {
+        background: #f9fafb;
+        font-size: 12px;
+        color: #374151;
+        font-weight: 600;
+      }
+      td {
+        font-size: 14px;
+        color: #111827;
+      }
+      .currency-column {
+        text-align: right;
+        font-weight: 500;
+      }
+      .subtotal-row {
+        background: #f9fafb;
+        font-weight: 600;
+      }
+      .total-row {
+        background: #f9fafb;
+        font-weight: 600;
+        border-top: 2px solid #e5e7eb;
+      }
+      .footer {
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 1px solid #e5e7eb;
+        font-size: 11px;
+        color: #666;
+        line-height: 1.4;
+      }
+      .footer ul {
+        margin: 10px 0;
+        padding-left: 20px;
+      }
+      .footer li {
+        margin-bottom: 5px;
+      }
+      .footer-center {
+        text-align: center;
+        margin-top: 20px;
+        color: #FF5A71;
+        font-weight: bold;
+      }
+    `;
+
+    // Create PDF header
     const header = document.createElement('div');
     header.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #FF5A71; padding-bottom: 20px;">
+      <div class="header">
         <div>
-          <h1 style="color: #FF5A71; font-size: 32px; font-weight: bold; margin: 0;">Ontop</h1>
-          <p style="color: #666; font-size: 14px; margin: 5px 0 0 0;">Global Employment Solutions</p>
+          <div class="logo">Ontop</div>
+          <div class="logo-subtitle">Global Employment Solutions</div>
         </div>
-        <div style="text-align: right; background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #FF5A71;">
-          <div style="margin-bottom: 10px;">
-            <label style="font-size: 12px; color: #666; display: block;">Quote Sender:</label>
-            <div style="border-bottom: 1px solid #ccc; min-width: 150px; padding: 2px 0;">${formData.aeName}</div>
-          </div>
-          <div style="margin-bottom: 10px;">
-            <label style="font-size: 12px; color: #666; display: block;">Client Name:</label>
-            <div style="border-bottom: 1px solid #ccc; min-width: 150px; padding: 2px 0;">${formData.clientName}</div>
-          </div>
-          <div>
-            <label style="font-size: 12px; color: #666; display: block;">Valid Until:</label>
-            <div style="border-bottom: 1px solid #ccc; min-width: 150px; padding: 2px 0;">${new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString()}</div>
-          </div>
+        <div class="quote-info">
+          <div><strong>Quote Sender:</strong> ${formData.aeName}</div>
+          <div><strong>Client Name:</strong> ${formData.clientName}</div>
+          <div><strong>Valid Until:</strong> ${new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString()}</div>
         </div>
       </div>
     `;
 
-    // Create PDF content
+    // Create PDF content with improved table formatting
     const content = document.createElement('div');
     content.innerHTML = `
       <h2 style="color: #333; font-size: 24px; margin-bottom: 20px;">Employment Quote Summary</h2>
       
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
-        ${createTableHTML('Amount You Pay', data.payFields, '#FF5A71', true)}
-        ${createTableHTML('Amount Employee Gets', data.employeeFields, '#10B981', false)}
+      <div style="display: block;">
+        ${createTableHTML('Amount You Pay', data.payFields, 'amount-you-pay', true)}
+        ${createTableHTML('Amount Employee Gets', data.employeeFields, 'amount-employee-gets', false)}
+        ${data.setupSummary.length > 0 ? createTableHTML('Setup Summary', data.setupSummary, 'setup-summary', true) : ''}
       </div>
-      
-      ${data.setupSummary.length > 0 ? `
-      <div style="margin-bottom: 30px;">
-        ${createTableHTML('Setup Summary', data.setupSummary, '#3B82F6', true)}
-      </div>
-      ` : ''}
     `;
 
     // Create footer
     const footer = document.createElement('div');
     const currentDate = new Date().toLocaleDateString();
     footer.innerHTML = `
-      <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #666; line-height: 1.4;">
+      <div class="footer">
         <p><strong>Important Notes:</strong></p>
-        <ul style="margin: 10px 0; padding-left: 20px;">
+        <ul>
           <li>Currency conversions based on rates on ${currentDate}, may vary—contracts always in local currency.</li>
           <li>Setup Cost = one month's salary (Security Deposit) + Ontop fee; secures Ontop against potential defaults.</li>
           <li>Dismissal Deposit = one-twelfth of salary, provisioned for future termination costs.</li>
         </ul>
-        <div style="text-align: center; margin-top: 20px; color: #FF5A71; font-weight: bold;">
+        <div class="footer-center">
           Generated by Ontop Quote Generator • ${currentDate}
         </div>
       </div>
     `;
 
     // Assemble PDF container
+    pdfContainer.className = 'pdf-container';
     pdfContainer.appendChild(header);
     pdfContainer.appendChild(content);
     pdfContainer.appendChild(footer);
+
+    // Add styles to head
+    const styleElement = document.createElement('style');
+    styleElement.textContent = pdfStyles;
+    document.head.appendChild(styleElement);
+
     document.body.appendChild(pdfContainer);
 
     // Generate PDF
@@ -90,6 +197,7 @@ export const generatePDF = async (element: HTMLElement, data: QuoteData, formDat
     });
 
     document.body.removeChild(pdfContainer);
+    document.head.removeChild(styleElement);
 
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF('p', 'mm', 'a4');
@@ -119,7 +227,7 @@ export const generatePDF = async (element: HTMLElement, data: QuoteData, formDat
   }
 };
 
-const createTableHTML = (title: string, fields: any[], color: string, showTotal: boolean = true): string => {
+const createTableHTML = (title: string, fields: any[], containerClass: string, showTotal: boolean = true): string => {
   if (fields.length === 0) return '';
 
   const total = fields.reduce((sum, field) => sum + field.amount, 0);
@@ -127,41 +235,41 @@ const createTableHTML = (title: string, fields: any[], color: string, showTotal:
   const formatNumber = (amount: number): string => amount.toFixed(2);
   
   return `
-    <div style="border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px;">
-      <div style="background: ${color}; color: white; padding: 15px;">
-        <h3 style="margin: 0; font-size: 18px; font-weight: 600;">${title}</h3>
-      </div>
-      <div style="background: white;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr style="background: #f9fafb;">
-              <th style="padding: 12px 15px; text-align: left; font-size: 12px; color: #374151; font-weight: 600; border-bottom: 1px solid #e5e7eb;">Description</th>
-              <th style="padding: 12px 15px; text-align: right; font-size: 12px; color: #374151; font-weight: 600; border-bottom: 1px solid #e5e7eb;">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${fields.map(field => `
-              <tr>
-                <td style="padding: 10px 15px; font-size: 14px; color: #111827; border-bottom: 1px solid #f3f4f6;">${field.label}</td>
-                <td style="padding: 10px 15px; font-size: 14px; color: #111827; text-align: right; font-weight: 500; border-bottom: 1px solid #f3f4f6;">
-                  ${formatNumber(field.amount)} ${field.currency}
-                </td>
-              </tr>
-            `).join('')}
-            ${showTotal ? `
-            <tr style="background: #f9fafb; font-weight: 600;">
-              <td style="padding: 12px 15px; font-size: 14px; color: #111827;">
-                ${title === 'Amount You Pay' ? 'Total You Pay' : 
-                  title === 'Setup Summary' ? 'Total Setup Fee' : 'Total'}
+    <div class="table-container ${containerClass}">
+      <div class="table-header">${title}</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th class="currency-column">Local Amount</th>
+            <th class="currency-column">USD Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${fields.map(field => `
+            <tr>
+              <td>${field.label}</td>
+              <td class="currency-column">
+                ${formatNumber(field.localAmount || field.amount)} ${field.currency}
               </td>
-              <td style="padding: 12px 15px; font-size: 14px; color: #111827; text-align: right;">
-                ${formatNumber(total)} ${fields[0]?.currency || 'USD'}
+              <td class="currency-column">
+                ${formatNumber(field.usdAmount || (field.amount))} USD
               </td>
             </tr>
-            ` : ''}
-          </tbody>
-        </table>
-      </div>
+          `).join('')}
+          ${showTotal ? `
+          <tr class="total-row">
+            <td><strong>Total</strong></td>
+            <td class="currency-column">
+              <strong>${formatNumber(total)} ${fields[0]?.currency || 'USD'}</strong>
+            </td>
+            <td class="currency-column">
+              <strong>${formatNumber(total)} USD</strong>
+            </td>
+          </tr>
+          ` : ''}
+        </tbody>
+      </table>
     </div>
   `;
 };
