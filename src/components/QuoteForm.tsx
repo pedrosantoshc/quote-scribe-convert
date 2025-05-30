@@ -59,7 +59,7 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onSubmit }) => {
     quoteCurrency: 'USD',
     aeName: '',
     clientName: '',
-    eorFeeUSD: 0
+    eorFeeUSD: 499  // Default value
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -112,7 +112,7 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onSubmit }) => {
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="Local" id="local" />
-                <Label htmlFor="local">Local ({selectedCurrency || 'Currency'})</Label>
+                <Label htmlFor="local">Local Currency</Label>
               </div>
             </RadioGroup>
           </div>
@@ -158,7 +158,7 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onSubmit }) => {
               step="0.01"
               value={formData.eorFeeUSD || ''}
               onChange={(e) => setFormData({...formData, eorFeeUSD: parseFloat(e.target.value) || 0})}
-              placeholder="0.00"
+              placeholder="499.00"
               className="mt-2"
             />
           </div>

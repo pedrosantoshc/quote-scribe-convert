@@ -44,7 +44,7 @@ const QuoteGenerator = () => {
     quoteCurrency: 'USD',
     aeName: '',
     clientName: '',
-    eorFeeUSD: 0
+    eorFeeUSD: 499  // Default value
   });
   const [ocrTexts, setOcrTexts] = useState<{pay: string; employee: string}>({pay: '', employee: ''});
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
@@ -265,18 +265,21 @@ const QuoteGenerator = () => {
         };
       });
 
-      // Find the total employer contribution field
-      const totalEmployerContribution = convertedPayFields.find(f => 
-        f.label.toLowerCase().includes('total employer contribution')
+      // Get gross salary in USD (always use USD for calculations)
+      const grossSalaryUSD = formData.quoteCurrency === 'USD' ? payParsed.grossSalary : payParsed.grossSalary * rateToUSD;
+
+      // Find the total monthly cost field
+      const totalMonthlyCostField = convertedPayFields.find(f => 
+        f.label.toLowerCase().includes('total monthly cost')
       );
 
       // Add computed fields to pay fields for final display
       const dismissalDeposit: ParsedField = {
         label: 'Dismissal Deposit (1/12 salary)',
-        amount: payParsed.grossSalary / 12,
-        currency: localCurrency,
-        localAmount: (payParsed.grossSalary / 12),
-        usdAmount: (payParsed.grossSalary / 12) * rateToUSD
+        amount: grossSalaryUSD / 12,
+        currency: 'USD',
+        localAmount: (grossSalaryUSD / 12) * rateToLocal,
+        usdAmount: grossSalaryUSD / 12
       };
 
       const eorFee: ParsedField = {
@@ -293,14 +296,14 @@ const QuoteGenerator = () => {
         eorFee
       ];
 
-      // Create proper setup summary with Security Deposit always in USD
+      // Create proper setup summary
       const setupSummary: ParsedField[] = [
         {
           label: 'Security Deposit (1 month salary)',
-          amount: payParsed.grossSalary,
+          amount: grossSalaryUSD,
           currency: 'USD',
-          localAmount: payParsed.grossSalary * rateToLocal,
-          usdAmount: payParsed.grossSalary
+          localAmount: grossSalaryUSD * rateToLocal,
+          usdAmount: grossSalaryUSD
         },
         {
           label: 'Ontop EOR Fee',
@@ -308,20 +311,23 @@ const QuoteGenerator = () => {
           currency: 'USD',
           localAmount: eorFeeLocal,
           usdAmount: formData.eorFeeUSD
+        },
+        {
+          label: 'Total Setup Fee',
+          amount: grossSalaryUSD + formData.eorFeeUSD,
+          currency: 'USD',
+          localAmount: (grossSalaryUSD + formData.eorFeeUSD) * rateToLocal,
+          usdAmount: grossSalaryUSD + formData.eorFeeUSD
         }
       ];
 
-      // Add total setup fee
-      const totalSetupLocal = (payParsed.grossSalary * rateToLocal) + eorFeeLocal;
-      const totalSetupUSD = payParsed.grossSalary + formData.eorFeeUSD;
-      
-      setupSummary.push({
-        label: 'Total Setup Fee',
-        amount: totalSetupUSD,
-        currency: 'USD',
-        localAmount: totalSetupLocal,
-        usdAmount: totalSetupUSD
-      });
+      // Calculate total for Amount You Pay table
+      const totalYouPayLocal = (totalMonthlyCostField?.localAmount || 0) + 
+                               (eorFee.localAmount || 0) + 
+                               (dismissalDeposit.localAmount || 0);
+      const totalYouPayUSD = (totalMonthlyCostField?.usdAmount || 0) + 
+                             (eorFee.usdAmount || 0) + 
+                             (dismissalDeposit.usdAmount || 0);
 
       const data: QuoteData = {
         payFields: finalPayFields,
@@ -330,11 +336,9 @@ const QuoteGenerator = () => {
         localCurrency,
         quoteCurrency: formData.quoteCurrency,
         exchangeRate: rateToLocal,
-        dismissalDeposit: payParsed.grossSalary / 12,
+        dismissalDeposit: grossSalaryUSD / 12,
         eorFeeLocal: eorFeeLocal,
-        totalYouPay: (totalEmployerContribution?.localAmount || 0) + 
-                     (eorFee.localAmount || 0) + 
-                     (dismissalDeposit.localAmount || 0)
+        totalYouPay: totalYouPayLocal
       };
 
       setQuoteData(data);

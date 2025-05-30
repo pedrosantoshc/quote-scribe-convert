@@ -8,6 +8,29 @@ interface QuoteTablesProps {
   formData: FormData;
 }
 
+// Define known subtotal patterns
+const PAY_SUBTOTALS = [
+  'total employer contribution',
+  'total monthly cost',
+  'extra mandatory payments'
+];
+
+const EMPLOYEE_SUBTOTALS = [
+  'total employee contribution'
+];
+
+// Function to detect subtotals
+const isSubtotalRow = (label: string, tableType: 'pay' | 'employee'): boolean => {
+  const subtotals = tableType === 'pay' ? PAY_SUBTOTALS : EMPLOYEE_SUBTOTALS;
+  return subtotals.some(pattern => label.toLowerCase().includes(pattern));
+};
+
+// Function to detect gross salary
+const isGrossSalary = (label: string): boolean => {
+  return label.toLowerCase().includes('gross monthly salary') || 
+         label.toLowerCase().includes('total gross monthly salary');
+};
+
 const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
   const formatNumber = (amount: number): string => {
     // Format without thousand separators, using . for decimals only
@@ -20,18 +43,18 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
 
   // Special calculation for Amount You Pay table
   const calculatePayTableTotal = (fields: ParsedField[]) => {
-    const totalEmployerContribution = fields.find(f => 
-      f.label.toLowerCase().includes('total employer contribution')
+    const totalMonthlyCost = fields.find(f => 
+      f.label.toLowerCase().includes('total monthly cost')
     );
     const eorFee = fields.find(f => f.label.toLowerCase().includes('ontop eor fee'));
     const dismissalDeposit = fields.find(f => f.label.toLowerCase().includes('dismissal deposit'));
 
-    if (totalEmployerContribution && eorFee && dismissalDeposit) {
+    if (totalMonthlyCost && eorFee && dismissalDeposit) {
       return {
-        localTotal: (totalEmployerContribution.localAmount || 0) + 
+        localTotal: (totalMonthlyCost.localAmount || 0) + 
                     (eorFee.localAmount || 0) + 
                     (dismissalDeposit.localAmount || 0),
-        usdTotal: (totalEmployerContribution.usdAmount || 0) + 
+        usdTotal: (totalMonthlyCost.usdAmount || 0) + 
                   (eorFee.usdAmount || 0) + 
                   (dismissalDeposit.usdAmount || 0)
       };
@@ -57,6 +80,7 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
   }) => {
     const totals = isPayTable ? calculatePayTableTotal(fields) : calculateTotal(fields);
     const showTotal = isPayTable || isSetupTable; // Only show totals for Pay and Setup tables
+    const tableType = isPayTable ? 'pay' : 'employee';
     
     return (
       <Card className="rounded-2xl shadow-lg border-0 overflow-hidden">
@@ -84,9 +108,16 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {fields.map((field, index) => {
-                    const isTotal = field.label?.toLowerCase().includes('total');
+                    const isSubtotal = isSubtotalRow(field.label, tableType);
                     const isNetSalary = isEmployeeTable && field.label.toLowerCase().includes('net monthly salary');
-                    const rowClass = isTotal || isNetSalary ? "bg-gray-50 font-semibold" : "hover:bg-gray-50 transition-colors";
+                    const isGross = isGrossSalary(field.label);
+                    
+                    const rowClass = `
+                      ${isSubtotal ? 'bg-gray-50 font-semibold' : ''}
+                      ${isNetSalary ? 'bg-gray-50 font-semibold' : ''}
+                      ${isGross ? 'font-medium' : ''}
+                      hover:bg-gray-50 transition-colors
+                    `.trim();
                     
                     return (
                       <tr key={index} className={rowClass}>
