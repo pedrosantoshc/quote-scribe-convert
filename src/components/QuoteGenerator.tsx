@@ -233,7 +233,7 @@ const QuoteGenerator = () => {
       // Parse both OCR texts using new separate functions
       const { parsePayScreenshot, parseEmployeeScreenshot, getLocalCurrency } = await import('../utils/ocrParser');
       
-      const payParsed = parsePayScreenshot(payText, formData.country, formData.eorFeeUSD);
+      const payParsed = parsePayScreenshot(payText);
       const employeeParsed = parseEmployeeScreenshot(employeeText);
       
       // Get currency conversion rates with error handling
