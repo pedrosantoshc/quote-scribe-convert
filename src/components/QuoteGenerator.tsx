@@ -245,6 +245,9 @@ const QuoteGenerator = () => {
       const rateToLocal = rates.rates[localCurrency] || 1;
       const rateToUSD = 1 / rateToLocal;
 
+      // Calculate EOR fee in local currency
+      const eorFeeLocal = formData.eorFeeUSD * rateToLocal;
+
       // Convert amounts based on quote currency using consistent conversion function
       const convertedPayFields = payParsed.payFields.map(field => {
         const converted = convertAmount(field.amount, field.currency, localCurrency, rateToLocal, rateToUSD);
@@ -295,7 +298,7 @@ const QuoteGenerator = () => {
         quoteCurrency: formData.quoteCurrency,
         exchangeRate: rateToLocal,
         dismissalDeposit: payParsed.grossSalary / 12,
-        eorFeeLocal: formData.eorFeeUSD * rateToLocal,
+        eorFeeLocal: eorFeeLocal,
         totalYouPay: convertedPayFields.reduce((sum, field) => sum + (field.localAmount || field.amount), 0)
       };
 
