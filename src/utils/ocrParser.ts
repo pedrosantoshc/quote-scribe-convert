@@ -1,5 +1,35 @@
 import { ParsedField, QuoteData } from '../components/QuoteGenerator';
 
+// Country to currency mapping
+const COUNTRY_CURRENCY_MAP: Record<string, string> = {
+  "Albania": "ALL", "Arab Emirates": "AED", "Argentina": "ARS", "Australia": "AUD",
+  "Austria": "EUR", "Azerbaijan": "AZN", "Bangladesh": "BDT", "Belgium": "EUR",
+  "Bolivia": "BOB", "Brazil": "BRL", "Bulgaria": "BGN", "Cambodia": "KHR",
+  "Canada": "CAD", "Chile": "CLP", "China": "CNY", "Colombia": "COP",
+  "Croatia": "EUR", "Czech Republic": "CZK", "Denmark": "DKK",
+  "Dominican Republic": "DOP", "Ecuador": "USD", "Egypt": "EGP",
+  "El Salvador": "USD", "Estonia": "EUR", "Finland": "EUR", "France": "EUR",
+  "Georgia": "GEL", "Germany": "EUR", "Greece": "EUR", "Guatemala": "GTQ",
+  "Honduras": "HNL", "Hong Kong": "HKD", "India": "INR", "Indonesia": "IDR",
+  "Ireland": "EUR", "Italy": "EUR", "Jamaica": "JMD", "Japan": "JPY",
+  "Kazakhstan": "KZT", "Kenya": "KES", "Latvia": "EUR", "Lithuania": "EUR",
+  "Malawi": "MWK", "Malaysia": "MYR", "Malta": "EUR", "Mauritius": "MUR",
+  "Mexico": "MXN", "Moldova": "MDL", "Montenegro": "EUR", "Morocco": "MAD",
+  "Namibia": "NAD", "Netherlands": "EUR", "Nicaragua": "NIO",
+  "North Macedonia": "MKD", "Panama": "PAB", "Paraguay": "PYG",
+  "Peru": "PEN", "Philippines": "PHP", "Poland": "PLN", "Portugal": "EUR",
+  "Puerto Rico": "USD", "Romania": "RON", "Rwanda": "RWF", "Senegal": "XOF",
+  "Singapore": "SGD", "Slovakia": "EUR", "Slovenia": "EUR", "South Africa": "ZAR",
+  "South Korea": "KRW", "Spain": "EUR", "Sri Lanka": "LKR", "Taiwan": "TWD",
+  "Tanzania": "TZS", "Thailand": "THB", "Turkey": "TRY", "Uganda": "UGX",
+  "United Kingdom": "GBP", "Uruguay": "UYU", "USA": "USD", "Venezuela": "VES",
+  "Zambia": "ZMW", "Zimbabwe": "ZWL"
+};
+
+export const getLocalCurrency = (country: string): string => {
+  return COUNTRY_CURRENCY_MAP[country] || 'USD';
+};
+
 export const parsePayScreenshot = (text: string): { payFields: ParsedField[]; grossSalary: number; currency: string } => {
   console.log('Parsing Pay screenshot OCR text:', text);
 

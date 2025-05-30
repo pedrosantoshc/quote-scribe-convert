@@ -13,24 +13,45 @@ interface QuoteFormProps {
 }
 
 const COUNTRIES = [
-  { code: 'US', name: 'United States', currency: 'USD' },
-  { code: 'CL', name: 'Chile', currency: 'CLP' },
-  { code: 'AR', name: 'Argentina', currency: 'ARS' },
-  { code: 'BR', name: 'Brazil', currency: 'BRL' },
-  { code: 'MX', name: 'Mexico', currency: 'MXN' },
-  { code: 'CO', name: 'Colombia', currency: 'COP' },
-  { code: 'PE', name: 'Peru', currency: 'PEN' },
-  { code: 'BD', name: 'Bangladesh', currency: 'BDT' },
-  { code: 'IN', name: 'India', currency: 'INR' },
-  { code: 'SG', name: 'Singapore', currency: 'SGD' },
-  { code: 'AU', name: 'Australia', currency: 'AUD' },
-  { code: 'CA', name: 'Canada', currency: 'CAD' },
-  { code: 'CH', name: 'Switzerland', currency: 'CHF' },
-  { code: 'JP', name: 'Japan', currency: 'JPY' },
-  { code: 'CN', name: 'China', currency: 'CNY' },
-  { code: 'GB', name: 'United Kingdom', currency: 'GBP' },
-  { code: 'EU', name: 'European Union', currency: 'EUR' }
+  'Albania', 'Arab Emirates', 'Argentina', 'Australia', 'Austria', 'Azerbaijan',
+  'Bangladesh', 'Belgium', 'Bolivia', 'Brazil', 'Bulgaria', 'Cambodia', 'Canada',
+  'Chile', 'China', 'Colombia', 'Croatia', 'Czech Republic', 'Denmark',
+  'Dominican Republic', 'Ecuador', 'Egypt', 'El Salvador', 'Estonia', 'Finland',
+  'France', 'Georgia', 'Germany', 'Greece', 'Guatemala', 'Honduras', 'Hong Kong',
+  'India', 'Indonesia', 'Ireland', 'Italy', 'Jamaica', 'Japan', 'Kazakhstan',
+  'Kenya', 'Latvia', 'Lithuania', 'Malawi', 'Malaysia', 'Malta', 'Mauritius',
+  'Mexico', 'Moldova', 'Montenegro', 'Morocco', 'Namibia', 'Netherlands',
+  'Nicaragua', 'North Macedonia', 'Panama', 'Paraguay', 'Peru', 'Philippines',
+  'Poland', 'Portugal', 'Puerto Rico', 'Romania', 'Rwanda', 'Senegal',
+  'Singapore', 'Slovakia', 'Slovenia', 'South Africa', 'South Korea', 'Spain',
+  'Sri Lanka', 'Taiwan', 'Tanzania', 'Thailand', 'Turkey', 'Uganda',
+  'United Kingdom', 'Uruguay', 'USA', 'Venezuela', 'Zambia', 'Zimbabwe'
 ];
+
+const CURRENCY_MAP: Record<string, string> = {
+  "Albania": "ALL", "Arab Emirates": "AED", "Argentina": "ARS", "Australia": "AUD",
+  "Austria": "EUR", "Azerbaijan": "AZN", "Bangladesh": "BDT", "Belgium": "EUR",
+  "Bolivia": "BOB", "Brazil": "BRL", "Bulgaria": "BGN", "Cambodia": "KHR",
+  "Canada": "CAD", "Chile": "CLP", "China": "CNY", "Colombia": "COP",
+  "Croatia": "EUR", "Czech Republic": "CZK", "Denmark": "DKK",
+  "Dominican Republic": "DOP", "Ecuador": "USD", "Egypt": "EGP",
+  "El Salvador": "USD", "Estonia": "EUR", "Finland": "EUR", "France": "EUR",
+  "Georgia": "GEL", "Germany": "EUR", "Greece": "EUR", "Guatemala": "GTQ",
+  "Honduras": "HNL", "Hong Kong": "HKD", "India": "INR", "Indonesia": "IDR",
+  "Ireland": "EUR", "Italy": "EUR", "Jamaica": "JMD", "Japan": "JPY",
+  "Kazakhstan": "KZT", "Kenya": "KES", "Latvia": "EUR", "Lithuania": "EUR",
+  "Malawi": "MWK", "Malaysia": "MYR", "Malta": "EUR", "Mauritius": "MUR",
+  "Mexico": "MXN", "Moldova": "MDL", "Montenegro": "EUR", "Morocco": "MAD",
+  "Namibia": "NAD", "Netherlands": "EUR", "Nicaragua": "NIO",
+  "North Macedonia": "MKD", "Panama": "PAB", "Paraguay": "PYG",
+  "Peru": "PEN", "Philippines": "PHP", "Poland": "PLN", "Portugal": "EUR",
+  "Puerto Rico": "USD", "Romania": "RON", "Rwanda": "RWF", "Senegal": "XOF",
+  "Singapore": "SGD", "Slovakia": "EUR", "Slovenia": "EUR", "South Africa": "ZAR",
+  "South Korea": "KRW", "Spain": "EUR", "Sri Lanka": "LKR", "Taiwan": "TWD",
+  "Tanzania": "TZS", "Thailand": "THB", "Turkey": "TRY", "Uganda": "UGX",
+  "United Kingdom": "GBP", "Uruguay": "UYU", "USA": "USD", "Venezuela": "VES",
+  "Zambia": "ZMW", "Zimbabwe": "ZWL"
+};
 
 const QuoteForm: React.FC<QuoteFormProps> = ({ onSubmit }) => {
   const [formData, setFormData] = useState<FormData>({
@@ -49,7 +70,7 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onSubmit }) => {
     onSubmit(formData);
   };
 
-  const selectedCountry = COUNTRIES.find(c => c.code === formData.country);
+  const selectedCurrency = formData.country ? CURRENCY_MAP[formData.country] : '';
 
   return (
     <Card className="rounded-2xl shadow-lg border-0 max-w-2xl mx-auto">
@@ -69,8 +90,8 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onSubmit }) => {
               </SelectTrigger>
               <SelectContent>
                 {COUNTRIES.map((country) => (
-                  <SelectItem key={country.code} value={country.code}>
-                    {country.name} ({country.currency})
+                  <SelectItem key={country} value={country}>
+                    {country} ({CURRENCY_MAP[country]})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -91,7 +112,7 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onSubmit }) => {
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="Local" id="local" />
-                <Label htmlFor="local">Local ({selectedCountry?.currency || 'Currency'})</Label>
+                <Label htmlFor="local">Local ({selectedCurrency || 'Currency'})</Label>
               </div>
             </RadioGroup>
           </div>

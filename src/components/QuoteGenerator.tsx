@@ -70,32 +70,58 @@ const QuoteGenerator = () => {
       console.log('OCR Texts extracted:', {pay: payText, employee: employeeText});
       
       // Parse both OCR texts using new separate functions
-      const { parsePayScreenshot, parseEmployeeScreenshot } = await import('../utils/ocrParser');
+      const { parsePayScreenshot, parseEmployeeScreenshot, getLocalCurrency } = await import('../utils/ocrParser');
       
-      const payParsed = parsePayScreenshot(payText);
+      const payParsed = parsePayScreenshot(payText, formData.country, formData.eorFeeUSD);
       const employeeParsed = parseEmployeeScreenshot(employeeText);
       
       // Get currency conversion rates with error handling
       const rates = await convertCurrency();
       setCurrencyRates(rates);
 
-      const salary = payParsed.grossSalary;
-      const dismissalDeposit = Math.round(salary / 12 * 100) / 100;
-      
-      // Calculate exchange rate for local currency
-      const localCurrency = payParsed.currency;
+      const localCurrency = getLocalCurrency(formData.country);
       const rateToLocal = rates.rates[localCurrency] || 1;
-      
-      // Calculate EOR fee in local currency
-      const eorFeeLocal = formData.quoteCurrency === 'USD' 
-        ? Math.round(formData.eorFeeUSD * rateToLocal * 100) / 100
-        : formData.eorFeeUSD;
+      const rateToUSD = 1 / rateToLocal;
 
-      // Calculate total you pay
-      const payFieldsTotal = payParsed.payFields.reduce((sum, field) => sum + field.amount, 0);
-      const totalYouPay = payFieldsTotal + dismissalDeposit + eorFeeLocal;
+      // Convert amounts based on quote currency
+      const convertedPayFields = payParsed.payFields.map(field => {
+        let localAmount, usdAmount;
+        
+        if (formData.quoteCurrency === 'USD') {
+          usdAmount = field.amount;
+          localAmount = field.amount * rateToLocal;
+        } else {
+          localAmount = field.amount;
+          usdAmount = field.amount * rateToUSD;
+        }
+
+        return {
+          ...field,
+          localAmount,
+          usdAmount
+        };
+      });
+
+      const convertedEmployeeFields = employeeParsed.employeeFields.map(field => {
+        let localAmount, usdAmount;
+        
+        if (formData.quoteCurrency === 'USD') {
+          usdAmount = field.amount;
+          localAmount = field.amount * rateToLocal;
+        } else {
+          localAmount = field.amount;
+          usdAmount = field.amount * rateToUSD;
+        }
+
+        return {
+          ...field,
+          localAmount,
+          usdAmount
+        };
+      });
 
       // Create setup summary
+      const salary = payParsed.grossSalary;
       const setupSummary: ParsedField[] = [
         {
           label: 'Security Deposit (1 month salary)',
@@ -104,33 +130,21 @@ const QuoteGenerator = () => {
         },
         {
           label: 'Ontop EOR Fee',
-          amount: eorFeeLocal,
-          currency: localCurrency
+          amount: formData.eorFeeUSD,
+          currency: 'USD'
         }
       ];
 
       const data: QuoteData = {
-        payFields: [
-          ...payParsed.payFields,
-          {
-            label: 'Dismissal Deposit (1/12 salary)',
-            amount: dismissalDeposit,
-            currency: localCurrency
-          },
-          {
-            label: 'Ontop EOR Fee',
-            amount: eorFeeLocal,
-            currency: localCurrency
-          }
-        ],
-        employeeFields: employeeParsed.employeeFields,
+        payFields: convertedPayFields,
+        employeeFields: convertedEmployeeFields,
         setupSummary,
         localCurrency,
         quoteCurrency: formData.quoteCurrency,
         exchangeRate: rateToLocal,
-        dismissalDeposit,
-        eorFeeLocal,
-        totalYouPay
+        dismissalDeposit: salary / 12,
+        eorFeeLocal: formData.eorFeeUSD * rateToLocal,
+        totalYouPay: convertedPayFields.reduce((sum, field) => sum + (field.localAmount || field.amount), 0)
       };
 
       setQuoteData(data);
