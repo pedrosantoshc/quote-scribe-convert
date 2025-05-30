@@ -18,7 +18,28 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
     return `${formatNumber(amount)} ${currency}`;
   };
 
-  // Calculate totals for a set of fields
+  // Special calculation for Amount You Pay table
+  const calculatePayTableTotal = (fields: ParsedField[]) => {
+    const totalEmployerContribution = fields.find(f => 
+      f.label.toLowerCase().includes('total employer contribution')
+    );
+    const eorFee = fields.find(f => f.label.toLowerCase().includes('ontop eor fee'));
+    const dismissalDeposit = fields.find(f => f.label.toLowerCase().includes('dismissal deposit'));
+
+    if (totalEmployerContribution && eorFee && dismissalDeposit) {
+      return {
+        localTotal: (totalEmployerContribution.localAmount || 0) + 
+                    (eorFee.localAmount || 0) + 
+                    (dismissalDeposit.localAmount || 0),
+        usdTotal: (totalEmployerContribution.usdAmount || 0) + 
+                  (eorFee.usdAmount || 0) + 
+                  (dismissalDeposit.usdAmount || 0)
+      };
+    }
+    return { localTotal: 0, usdTotal: 0 };
+  };
+
+  // Standard total calculation for Setup Summary
   const calculateTotal = (fields: ParsedField[]) => {
     return fields.reduce((acc, field) => ({
       localTotal: acc.localTotal + (field.localAmount || field.amount),
@@ -26,13 +47,16 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
     }), { localTotal: 0, usdTotal: 0 });
   };
 
-  const TableCard = ({ title, fields, colorClass, showTotal = true }: { 
+  const TableCard = ({ title, fields, colorClass, isPayTable = false, isEmployeeTable = false, isSetupTable = false }: { 
     title: string; 
     fields: ParsedField[]; 
     colorClass: string;
-    showTotal?: boolean;
+    isPayTable?: boolean;
+    isEmployeeTable?: boolean;
+    isSetupTable?: boolean;
   }) => {
-    const totals = calculateTotal(fields);
+    const totals = isPayTable ? calculatePayTableTotal(fields) : calculateTotal(fields);
+    const showTotal = isPayTable || isSetupTable; // Only show totals for Pay and Setup tables
     
     return (
       <Card className="rounded-2xl shadow-lg border-0 overflow-hidden">
@@ -61,7 +85,8 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
                 <tbody className="divide-y divide-gray-200">
                   {fields.map((field, index) => {
                     const isTotal = field.label?.toLowerCase().includes('total');
-                    const rowClass = isTotal ? "bg-gray-50 font-semibold" : "hover:bg-gray-50 transition-colors";
+                    const isNetSalary = isEmployeeTable && field.label.toLowerCase().includes('net monthly salary');
+                    const rowClass = isTotal || isNetSalary ? "bg-gray-50 font-semibold" : "hover:bg-gray-50 transition-colors";
                     
                     return (
                       <tr key={index} className={rowClass}>
@@ -111,18 +136,21 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
           title="Amount You Pay"
           fields={data.payFields}
           colorClass="bg-[#FF5A71]"
+          isPayTable={true}
         />
         
         <TableCard
           title="Amount Employee Gets"
           fields={data.employeeFields}
           colorClass="bg-green-600"
+          isEmployeeTable={true}
         />
         
         <TableCard
           title="Setup Summary"
           fields={data.setupSummary}
           colorClass="bg-blue-600"
+          isSetupTable={true}
         />
       </div>
 

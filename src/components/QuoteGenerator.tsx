@@ -265,14 +265,42 @@ const QuoteGenerator = () => {
         };
       });
 
-      // Create proper setup summary with consistent currency conversion
+      // Find the total employer contribution field
+      const totalEmployerContribution = convertedPayFields.find(f => 
+        f.label.toLowerCase().includes('total employer contribution')
+      );
+
+      // Add computed fields to pay fields for final display
+      const dismissalDeposit: ParsedField = {
+        label: 'Dismissal Deposit (1/12 salary)',
+        amount: payParsed.grossSalary / 12,
+        currency: localCurrency,
+        localAmount: (payParsed.grossSalary / 12),
+        usdAmount: (payParsed.grossSalary / 12) * rateToUSD
+      };
+
+      const eorFee: ParsedField = {
+        label: 'Ontop EOR Fee',
+        amount: formData.eorFeeUSD,
+        currency: 'USD',
+        localAmount: eorFeeLocal,
+        usdAmount: formData.eorFeeUSD
+      };
+
+      const finalPayFields = [
+        ...convertedPayFields,
+        dismissalDeposit,
+        eorFee
+      ];
+
+      // Create proper setup summary with Security Deposit always in USD
       const setupSummary: ParsedField[] = [
         {
           label: 'Security Deposit (1 month salary)',
           amount: payParsed.grossSalary,
-          currency: localCurrency,
-          localAmount: payParsed.grossSalary,
-          usdAmount: payParsed.grossSalary * rateToUSD
+          currency: 'USD',
+          localAmount: payParsed.grossSalary * rateToLocal,
+          usdAmount: payParsed.grossSalary
         },
         {
           label: 'Ontop EOR Fee',
@@ -280,18 +308,23 @@ const QuoteGenerator = () => {
           currency: 'USD',
           localAmount: eorFeeLocal,
           usdAmount: formData.eorFeeUSD
-        },
-        {
-          label: 'Total Setup Fee',
-          amount: payParsed.grossSalary + eorFeeLocal,
-          currency: localCurrency,
-          localAmount: payParsed.grossSalary + eorFeeLocal,
-          usdAmount: (payParsed.grossSalary + eorFeeLocal) * rateToUSD
         }
       ];
 
+      // Add total setup fee
+      const totalSetupLocal = (payParsed.grossSalary * rateToLocal) + eorFeeLocal;
+      const totalSetupUSD = payParsed.grossSalary + formData.eorFeeUSD;
+      
+      setupSummary.push({
+        label: 'Total Setup Fee',
+        amount: totalSetupUSD,
+        currency: 'USD',
+        localAmount: totalSetupLocal,
+        usdAmount: totalSetupUSD
+      });
+
       const data: QuoteData = {
-        payFields: convertedPayFields,
+        payFields: finalPayFields,
         employeeFields: convertedEmployeeFields,
         setupSummary,
         localCurrency,
@@ -299,7 +332,9 @@ const QuoteGenerator = () => {
         exchangeRate: rateToLocal,
         dismissalDeposit: payParsed.grossSalary / 12,
         eorFeeLocal: eorFeeLocal,
-        totalYouPay: convertedPayFields.reduce((sum, field) => sum + (field.localAmount || field.amount), 0)
+        totalYouPay: (totalEmployerContribution?.localAmount || 0) + 
+                     (eorFee.localAmount || 0) + 
+                     (dismissalDeposit.localAmount || 0)
       };
 
       setQuoteData(data);

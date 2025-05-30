@@ -1,4 +1,3 @@
-
 import { ParsedField, QuoteData } from '../components/QuoteGenerator';
 
 // Country to currency mapping
@@ -73,6 +72,9 @@ const parseLineAmount = (line: string): { label: string; amount: number; currenc
         currency = amountMatch[3];
       }
     }
+
+    // Normalize currency to uppercase
+    currency = currency.toUpperCase();
 
     if (label && !isNaN(amount) && amount > 0) {
       return { label, amount, currency };
