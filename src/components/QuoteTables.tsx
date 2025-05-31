@@ -13,22 +13,24 @@ interface QuoteTablesProps {
 const PAY_SUBTOTALS = [
   'total employer contribution',
   'extra mandatory payments',
-  'total employment cost'
-];
+  'total employment cost',
+  'total monthly cost'
+].map(s => s.toLowerCase());
 
 const EMPLOYEE_SUBTOTALS = [
   'total employee contribution',
   'extra mandatory payments'
-];
+].map(s => s.toLowerCase());
 
 // Ontop brand colors for subtotal highlighting
 const SUBTOTAL_BG_COLOR = 'bg-[#FFF1F2]'; // Light pink background
 const SUBTOTAL_TEXT_COLOR = 'text-[#FF5A71]'; // Ontop pink text
 
 // Function to detect subtotals
-const isSubtotalRow = (label: string, tableType: 'pay' | 'employee'): boolean => {
+const isSubtotal = (label: string, tableType: 'pay' | 'employee'): boolean => {
+  const normalizedLabel = label.toLowerCase().trim();
   const subtotals = tableType === 'pay' ? PAY_SUBTOTALS : EMPLOYEE_SUBTOTALS;
-  return subtotals.some(pattern => label.toLowerCase().includes(pattern));
+  return subtotals.some(pattern => normalizedLabel.includes(pattern));
 };
 
 // Function to detect gross salary
@@ -127,12 +129,12 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {fields.map((field, index) => {
-                    const isSubtotal = isSubtotalRow(field.label, tableType as 'pay' | 'employee');
+                    const isSubtotalRow = isSubtotal(field.label, tableType as 'pay' | 'employee');
                     const isNetSalary = isEmployeeTable && field.label.toLowerCase().includes('net monthly salary');
                     const isGross = isGrossSalary(field.label);
                     
                     const rowClass = `
-                      ${isSubtotal ? `${SUBTOTAL_BG_COLOR} ${SUBTOTAL_TEXT_COLOR} font-semibold` : ''}
+                      ${isSubtotalRow ? `${SUBTOTAL_BG_COLOR} ${SUBTOTAL_TEXT_COLOR} font-semibold` : ''}
                       ${isNetSalary ? 'bg-gray-50 font-semibold' : ''}
                       ${isGross ? 'font-medium' : ''}
                       hover:bg-gray-50 transition-colors

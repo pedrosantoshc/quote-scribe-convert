@@ -6,12 +6,27 @@ import { formatNumber } from './formatters';
 
 export const generatePDF = async (element: HTMLElement, data: QuoteData, formData: FormData): Promise<void> => {
   try {
-    // Get all major sections
-    const headerSection = element.querySelector('.header') as HTMLElement;
-    const payTable = element.querySelector('.amount-you-pay') as HTMLElement;
-    const employeeTable = element.querySelector('.amount-employee-gets') as HTMLElement;
-    const setupTable = element.querySelector('.setup-summary') as HTMLElement;
-    const footer = element.querySelector('.footer') as HTMLElement;
+    // A4 dimensions in points
+    const PAGE_WIDTH = 595.28;
+    const PAGE_HEIGHT = 841.89;
+    const MARGIN = 50;
+    
+    const CONTENT_WIDTH = PAGE_WIDTH - (2 * MARGIN);
+    const CONTENT_HEIGHT = PAGE_HEIGHT - (2 * MARGIN);
+
+    const calculateImagePlacement = (image: HTMLCanvasElement) => {
+      const scaleX = CONTENT_WIDTH / image.width;
+      const scaleY = CONTENT_HEIGHT / image.height;
+      const scale = Math.min(scaleX, scaleY, 1); // Never scale up, only down
+
+      const scaledWidth = image.width * scale;
+      const scaledHeight = image.height * scale;
+
+      const x = MARGIN + (CONTENT_WIDTH - scaledWidth) / 2;
+      const y = MARGIN + (CONTENT_HEIGHT - scaledHeight) / 2;
+
+      return { x, y, width: scaledWidth, height: scaledHeight };
+    };
 
     // Create PDF header content
     const pdfHeader = document.createElement('div');
@@ -64,114 +79,79 @@ export const generatePDF = async (element: HTMLElement, data: QuoteData, formDat
       </div>
     `;
 
-    // Add temporary elements to DOM for capturing
-    document.body.appendChild(pdfHeader);
-    document.body.appendChild(pdfFooter);
-
-    // Convert each section to image with high quality
-    const canvasOptions = {
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff'
-    };
-
-    console.log('Capturing header...');
-    const headerImage = await html2canvas(pdfHeader, canvasOptions);
-    
-    console.log('Capturing pay table...');
-    const payTableImage = payTable ? await html2canvas(payTable, canvasOptions) : null;
-    
-    console.log('Capturing employee table...');
-    const employeeTableImage = employeeTable ? await html2canvas(employeeTable, canvasOptions) : null;
-    
-    console.log('Capturing setup table...');
-    const setupTableImage = setupTable ? await html2canvas(setupTable, canvasOptions) : null;
-    
-    console.log('Capturing footer...');
-    const footerImage = await html2canvas(pdfFooter, canvasOptions);
-
-    // Clean up temporary elements
-    document.body.removeChild(pdfHeader);
-    document.body.removeChild(pdfFooter);
-
-    // Create PDF with proper dimensions (A4)
     const pdf = new jsPDF({
-      unit: 'px',
+      unit: 'pt',
       format: 'a4',
       orientation: 'portrait'
     });
 
-    // A4 dimensions in pixels at 72 DPI
-    const pageWidth = 595;
-    const pageHeight = 842;
-    const margin = 40;
-    const usableWidth = pageWidth - (2 * margin);
-
-    // Add images with proper scaling and page breaks
-    let currentY = margin;
-
-    // Header
-    console.log('Adding header to PDF...');
-    const headerScale = usableWidth / headerImage.width;
-    const headerHeight = headerImage.height * headerScale;
-    pdf.addImage(headerImage.toDataURL('image/png'), 'PNG', margin, currentY, usableWidth, headerHeight);
-    currentY += headerHeight + 20;
-
-    // Pay table
-    if (payTableImage) {
-      console.log('Adding pay table to PDF...');
-      const payTableScale = usableWidth / payTableImage.width;
-      const payTableHeight = payTableImage.height * payTableScale;
-      
-      // Check if we need a new page
-      if (currentY + payTableHeight > pageHeight - margin - 100) {
-        pdf.addPage();
-        currentY = margin;
+    // Define all sections to capture
+    const sections = [
+      {
+        element: pdfHeader,
+        margin: { top: 30, bottom: 20 }
+      },
+      {
+        selector: '.amount-you-pay',
+        newPage: true,
+        margin: { top: 40, bottom: 40 }
+      },
+      {
+        selector: '.amount-employee-gets',
+        newPage: true,
+        margin: { top: 40, bottom: 40 }
+      },
+      {
+        selector: '.setup-summary',
+        newPage: true,
+        margin: { top: 40, bottom: 40 }
+      },
+      {
+        element: pdfFooter,
+        margin: { top: 20, bottom: 30 }
       }
+    ];
+
+    // Add temporary elements to DOM for capturing
+    document.body.appendChild(pdfHeader);
+    document.body.appendChild(pdfFooter);
+
+    // Process each section
+    for (let i = 0; i < sections.length; i++) {
+      const { selector, element: customElement, newPage, margin } = sections[i];
       
-      pdf.addImage(payTableImage.toDataURL('image/png'), 'PNG', margin, currentY, usableWidth, payTableHeight);
-      currentY += payTableHeight + 20;
+      let sectionElement;
+      if (customElement) {
+        sectionElement = customElement;
+      } else if (selector) {
+        sectionElement = element.querySelector(selector);
+        if (!sectionElement) continue;
+      } else {
+        continue;
+      }
+
+      if (newPage && i > 0) {
+        pdf.addPage();
+      }
+
+      console.log(`Capturing section ${i + 1}...`);
+      const image = await html2canvas(sectionElement as HTMLElement, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      });
+
+      const { x, y, width, height } = calculateImagePlacement(image);
+      
+      // Apply section-specific margins
+      const yPosition = y + (margin?.top || 0);
+      pdf.addImage(image.toDataURL('image/png'), 'PNG', x, yPosition, width, height);
     }
 
-    // Employee table (always on new page for better readability)
-    if (employeeTableImage) {
-      console.log('Adding employee table to PDF...');
-      pdf.addPage();
-      currentY = margin;
-      
-      const employeeTableScale = usableWidth / employeeTableImage.width;
-      const employeeTableHeight = employeeTableImage.height * employeeTableScale;
-      
-      pdf.addImage(employeeTableImage.toDataURL('image/png'), 'PNG', margin, currentY, usableWidth, employeeTableHeight);
-      currentY += employeeTableHeight + 20;
-    }
-
-    // Setup table (new page if it exists and has content)
-    if (setupTableImage && data.setupSummary.length > 0) {
-      console.log('Adding setup table to PDF...');
-      pdf.addPage();
-      currentY = margin;
-      
-      const setupTableScale = usableWidth / setupTableImage.width;
-      const setupTableHeight = setupTableImage.height * setupTableScale;
-      
-      pdf.addImage(setupTableImage.toDataURL('image/png'), 'PNG', margin, currentY, usableWidth, setupTableHeight);
-      currentY += setupTableHeight + 20;
-    }
-
-    // Footer
-    console.log('Adding footer to PDF...');
-    const footerScale = usableWidth / footerImage.width;
-    const footerHeight = footerImage.height * footerScale;
-    
-    // Check if we need a new page for footer
-    if (currentY + footerHeight > pageHeight - margin) {
-      pdf.addPage();
-      currentY = margin;
-    }
-    
-    pdf.addImage(footerImage.toDataURL('image/png'), 'PNG', margin, currentY, usableWidth, footerHeight);
+    // Clean up temporary elements
+    document.body.removeChild(pdfHeader);
+    document.body.removeChild(pdfFooter);
 
     // Save the PDF
     const fileName = `Ontop-Quote-${formData.clientName.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
