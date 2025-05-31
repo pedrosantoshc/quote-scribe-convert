@@ -1,4 +1,3 @@
-
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { QuoteData, FormData } from '../components/QuoteGenerator';
@@ -185,13 +184,12 @@ export const generatePDF = async (element: HTMLElement, data: QuoteData, formDat
 
     document.body.appendChild(pdfContainer);
 
-    // Generate PDF
+    // Generate PDF - Fixed html2canvas options
     const canvas = await html2canvas(pdfContainer, {
       scale: 2,
       useCORS: true,
       allowTaint: true,
-      backgroundColor: '#ffffff',
-      letterRendering: true
+      backgroundColor: '#ffffff'
     });
 
     document.body.removeChild(pdfContainer);
