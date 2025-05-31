@@ -1,3 +1,4 @@
+
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { QuoteData, FormData } from '../components/QuoteGenerator';
@@ -5,265 +6,180 @@ import { formatNumber } from './formatters';
 
 export const generatePDF = async (element: HTMLElement, data: QuoteData, formData: FormData): Promise<void> => {
   try {
-    // Create a temporary container for PDF content
-    const pdfContainer = document.createElement('div');
-    pdfContainer.style.width = '210mm'; // A4 width
-    pdfContainer.style.minHeight = '297mm'; // A4 height
-    pdfContainer.style.padding = '20mm';
-    pdfContainer.style.backgroundColor = 'white';
-    pdfContainer.style.fontFamily = 'Arial, sans-serif';
-    pdfContainer.style.position = 'absolute';
-    pdfContainer.style.top = '-9999px';
-    pdfContainer.style.left = '-9999px';
+    // Get all major sections
+    const headerSection = element.querySelector('.header') as HTMLElement;
+    const payTable = element.querySelector('.amount-you-pay') as HTMLElement;
+    const employeeTable = element.querySelector('.amount-employee-gets') as HTMLElement;
+    const setupTable = element.querySelector('.setup-summary') as HTMLElement;
+    const footer = element.querySelector('.footer') as HTMLElement;
 
-    // Apply PDF-specific styles
-    const pdfStyles = `
-      .pdf-container {
-        font-family: 'Arial', sans-serif;
-        color: #333;
-        line-height: 1.4;
-      }
-      .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 40px;
-        padding-bottom: 20px;
-        border-bottom: 2px solid #FF5A71;
-      }
-      .logo {
-        font-size: 32px;
-        color: #FF5A71;
-        font-weight: bold;
-      }
-      .logo-subtitle {
-        font-size: 14px;
-        color: #666;
-        margin-top: 5px;
-      }
-      .quote-info {
-        text-align: right;
-        background: #f8f9fa;
-        padding: 15px;
-        border-radius: 8px;
-        border-left: 4px solid #FF5A71;
-      }
-      .quote-info div {
-        margin-bottom: 8px;
-        font-size: 14px;
-      }
-      .table-container {
-        break-inside: avoid;
-        page-break-inside: avoid !important;
-        margin-bottom: 30px;
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      }
-      .table-header {
-        padding: 15px;
-        background: #FF5A71 !important;
-        color: white;
-        font-size: 18px;
-        font-weight: bold;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        background: white;
-        page-break-inside: avoid !important;
-      }
-      th, td {
-        padding: 12px 15px;
-        text-align: left;
-        border-bottom: 1px solid #e5e7eb;
-      }
-      th {
-        background: #f9fafb;
-        font-size: 12px;
-        color: #374151;
-        font-weight: 600;
-      }
-      td {
-        font-size: 15px;
-        color: #111827;
-        font-weight: 500;
-      }
-      .currency-column {
-        text-align: right;
-        font-weight: 500;
-        font-size: 15px;
-      }
-      .subtotal-row {
-        background: #f9fafb;
-        font-weight: 600;
-      }
-      .total-row {
-        background: #f9fafb;
-        font-weight: 600;
-        border-top: 2px solid #e5e7eb;
-      }
-      .footer {
-        margin-top: 40px;
-        padding-top: 20px;
-        border-top: 1px solid #e5e7eb;
-        font-size: 11px;
-        color: #666;
-        line-height: 1.4;
-      }
-      .footer ul {
-        margin: 10px 0;
-        padding-left: 20px;
-      }
-      .footer li {
-        margin-bottom: 5px;
-      }
-      .footer-center {
-        text-align: center;
-        margin-top: 20px;
-        color: #FF5A71;
-        font-weight: bold;
-      }
+    // Create PDF header content
+    const pdfHeader = document.createElement('div');
+    pdfHeader.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 40px;
+      padding: 20px;
+      border-bottom: 2px solid #FF5A71;
+      background: white;
+      font-family: Arial, sans-serif;
     `;
-
-    // Create PDF header
-    const header = document.createElement('div');
-    header.innerHTML = `
-      <div class="header">
-        <div>
-          <div class="logo">Ontop</div>
-          <div class="logo-subtitle">Global Employment Solutions</div>
-        </div>
-        <div class="quote-info">
-          <div><strong>Quote Sender:</strong> ${formData.aeName}</div>
-          <div><strong>Client Name:</strong> ${formData.clientName}</div>
-          <div><strong>Valid Until:</strong> ${new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString()}</div>
-        </div>
+    
+    pdfHeader.innerHTML = `
+      <div>
+        <div style="font-size: 32px; color: #FF5A71; font-weight: bold;">Ontop</div>
+        <div style="font-size: 14px; color: #666; margin-top: 5px;">Global Employment Solutions</div>
+      </div>
+      <div style="text-align: right; background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #FF5A71;">
+        <div style="margin-bottom: 8px; font-size: 14px;"><strong>Quote Sender:</strong> ${formData.aeName}</div>
+        <div style="margin-bottom: 8px; font-size: 14px;"><strong>Client Name:</strong> ${formData.clientName}</div>
+        <div style="font-size: 14px;"><strong>Valid Until:</strong> ${new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString()}</div>
       </div>
     `;
 
-    // Create PDF content with improved table formatting
-    const content = document.createElement('div');
-    content.innerHTML = `
-      <h2 style="color: #333; font-size: 24px; margin-bottom: 20px;">Employment Quote Summary</h2>
-      
-      <div style="display: block;">
-        ${createTableHTML('Amount You Pay', data.payFields, 'amount-you-pay', true, data)}
-        ${createTableHTML('Amount Employee Gets', data.employeeFields, 'amount-employee-gets', false, data)}
-        ${data.setupSummary.length > 0 ? createTableHTML('Setup Summary', data.setupSummary, 'setup-summary', true, data) : ''}
-      </div>
+    // Create PDF footer content
+    const pdfFooter = document.createElement('div');
+    pdfFooter.style.cssText = `
+      margin-top: 40px;
+      padding: 20px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 11px;
+      color: #666;
+      line-height: 1.4;
+      background: white;
+      font-family: Arial, sans-serif;
     `;
-
-    // Create footer
-    const footer = document.createElement('div');
+    
     const currentDate = new Date().toLocaleDateString();
-    footer.innerHTML = `
-      <div class="footer">
-        <p><strong>Important Notes:</strong></p>
-        <ul>
-          <li>Currency conversions based on rates on ${currentDate}, may vary—contracts always in local currency.</li>
-          <li>Setup Cost = one month's salary (Security Deposit) + Ontop fee; secures Ontop against potential defaults.</li>
-          <li>Dismissal Deposit = one-twelfth of salary, provisioned for future termination costs.</li>
-        </ul>
-        <div class="footer-center">
-          Generated by Ontop Quote Generator • ${currentDate}
-        </div>
+    pdfFooter.innerHTML = `
+      <p><strong>Important Notes:</strong></p>
+      <ul style="margin: 10px 0; padding-left: 20px;">
+        <li style="margin-bottom: 5px;">Currency conversions based on rates on ${currentDate}, may vary—contracts always in local currency.</li>
+        <li style="margin-bottom: 5px;">Setup Cost = one month's salary (Security Deposit) + Ontop fee; secures Ontop against potential defaults.</li>
+        <li style="margin-bottom: 5px;">Dismissal Deposit = one-twelfth of salary, provisioned for future termination costs.</li>
+      </ul>
+      <div style="text-align: center; margin-top: 20px; color: #FF5A71; font-weight: bold;">
+        Generated by Ontop Quote Generator • ${currentDate}
       </div>
     `;
 
-    // Assemble PDF container
-    pdfContainer.className = 'pdf-container';
-    pdfContainer.appendChild(header);
-    pdfContainer.appendChild(content);
-    pdfContainer.appendChild(footer);
+    // Add temporary elements to DOM for capturing
+    document.body.appendChild(pdfHeader);
+    document.body.appendChild(pdfFooter);
 
-    // Add styles to head
-    const styleElement = document.createElement('style');
-    styleElement.textContent = pdfStyles;
-    document.head.appendChild(styleElement);
-
-    document.body.appendChild(pdfContainer);
-
-    // Generate PDF - Fixed html2canvas options
-    const canvas = await html2canvas(pdfContainer, {
+    // Convert each section to image with high quality
+    const canvasOptions = {
       scale: 2,
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#ffffff'
+    };
+
+    console.log('Capturing header...');
+    const headerImage = await html2canvas(pdfHeader, canvasOptions);
+    
+    console.log('Capturing pay table...');
+    const payTableImage = payTable ? await html2canvas(payTable, canvasOptions) : null;
+    
+    console.log('Capturing employee table...');
+    const employeeTableImage = employeeTable ? await html2canvas(employeeTable, canvasOptions) : null;
+    
+    console.log('Capturing setup table...');
+    const setupTableImage = setupTable ? await html2canvas(setupTable, canvasOptions) : null;
+    
+    console.log('Capturing footer...');
+    const footerImage = await html2canvas(pdfFooter, canvasOptions);
+
+    // Clean up temporary elements
+    document.body.removeChild(pdfHeader);
+    document.body.removeChild(pdfFooter);
+
+    // Create PDF with proper dimensions (A4)
+    const pdf = new jsPDF({
+      unit: 'px',
+      format: 'a4',
+      orientation: 'portrait'
     });
 
-    document.body.removeChild(pdfContainer);
-    document.head.removeChild(styleElement);
+    // A4 dimensions in pixels at 72 DPI
+    const pageWidth = 595;
+    const pageHeight = 842;
+    const margin = 40;
+    const usableWidth = pageWidth - (2 * margin);
 
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    
-    const imgWidth = 210; // A4 width in mm
-    const pageHeight = 297; // A4 height in mm
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    let heightLeft = imgHeight;
-    let position = 0;
+    // Add images with proper scaling and page breaks
+    let currentY = margin;
 
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+    // Header
+    console.log('Adding header to PDF...');
+    const headerScale = usableWidth / headerImage.width;
+    const headerHeight = headerImage.height * headerScale;
+    pdf.addImage(headerImage.toDataURL('image/png'), 'PNG', margin, currentY, usableWidth, headerHeight);
+    currentY += headerHeight + 20;
 
-    while (heightLeft >= 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+    // Pay table
+    if (payTableImage) {
+      console.log('Adding pay table to PDF...');
+      const payTableScale = usableWidth / payTableImage.width;
+      const payTableHeight = payTableImage.height * payTableScale;
+      
+      // Check if we need a new page
+      if (currentY + payTableHeight > pageHeight - margin - 100) {
+        pdf.addPage();
+        currentY = margin;
+      }
+      
+      pdf.addImage(payTableImage.toDataURL('image/png'), 'PNG', margin, currentY, usableWidth, payTableHeight);
+      currentY += payTableHeight + 20;
     }
 
+    // Employee table (always on new page for better readability)
+    if (employeeTableImage) {
+      console.log('Adding employee table to PDF...');
+      pdf.addPage();
+      currentY = margin;
+      
+      const employeeTableScale = usableWidth / employeeTableImage.width;
+      const employeeTableHeight = employeeTableImage.height * employeeTableScale;
+      
+      pdf.addImage(employeeTableImage.toDataURL('image/png'), 'PNG', margin, currentY, usableWidth, employeeTableHeight);
+      currentY += employeeTableHeight + 20;
+    }
+
+    // Setup table (new page if it exists and has content)
+    if (setupTableImage && data.setupSummary.length > 0) {
+      console.log('Adding setup table to PDF...');
+      pdf.addPage();
+      currentY = margin;
+      
+      const setupTableScale = usableWidth / setupTableImage.width;
+      const setupTableHeight = setupTableImage.height * setupTableScale;
+      
+      pdf.addImage(setupTableImage.toDataURL('image/png'), 'PNG', margin, currentY, usableWidth, setupTableHeight);
+      currentY += setupTableHeight + 20;
+    }
+
+    // Footer
+    console.log('Adding footer to PDF...');
+    const footerScale = usableWidth / footerImage.width;
+    const footerHeight = footerImage.height * footerScale;
+    
+    // Check if we need a new page for footer
+    if (currentY + footerHeight > pageHeight - margin) {
+      pdf.addPage();
+      currentY = margin;
+    }
+    
+    pdf.addImage(footerImage.toDataURL('image/png'), 'PNG', margin, currentY, usableWidth, footerHeight);
+
+    // Save the PDF
     const fileName = `Ontop-Quote-${formData.clientName.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+    console.log('Saving PDF:', fileName);
     pdf.save(fileName);
 
   } catch (error) {
     console.error('Error generating PDF:', error);
     throw error;
   }
-};
-
-const createTableHTML = (title: string, fields: any[], containerClass: string, showTotal: boolean = true, data: QuoteData): string => {
-  if (fields.length === 0) return '';
-
-  const total = fields.reduce((sum, field) => sum + field.amount, 0);
-  
-  return `
-    <div class="table-container ${containerClass}">
-      <div class="table-header">${title}</div>
-      <table>
-        <thead>
-          <tr>
-            <th>Description</th>
-            <th class="currency-column">Local Amount</th>
-            <th class="currency-column">USD Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${fields.map(field => `
-            <tr>
-              <td>${field.label}</td>
-              <td class="currency-column">
-                ${formatNumber(field.localAmount || field.amount)} ${data.localCurrency}
-              </td>
-              <td class="currency-column">
-                ${formatNumber(field.usdAmount || (field.amount))} USD
-              </td>
-            </tr>
-          `).join('')}
-          ${showTotal ? `
-          <tr class="total-row">
-            <td><strong>Total</strong></td>
-            <td class="currency-column">
-              <strong>${formatNumber(total)} ${data.localCurrency}</strong>
-            </td>
-            <td class="currency-column">
-              <strong>${formatNumber(total)} USD</strong>
-            </td>
-          </tr>
-          ` : ''}
-        </tbody>
-      </table>
-    </div>
-  `;
 };
