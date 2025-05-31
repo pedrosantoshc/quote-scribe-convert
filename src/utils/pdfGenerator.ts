@@ -2,6 +2,7 @@
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { QuoteData, FormData } from '../components/QuoteGenerator';
+import { formatNumber } from './formatters';
 
 export const generatePDF = async (element: HTMLElement, data: QuoteData, formData: FormData): Promise<void> => {
   try {
@@ -54,6 +55,7 @@ export const generatePDF = async (element: HTMLElement, data: QuoteData, formDat
       }
       .table-container {
         break-inside: avoid;
+        page-break-inside: avoid !important;
         margin-bottom: 30px;
         border-radius: 12px;
         overflow: hidden;
@@ -61,23 +63,16 @@ export const generatePDF = async (element: HTMLElement, data: QuoteData, formDat
       }
       .table-header {
         padding: 15px;
+        background: #FF5A71 !important;
         color: white;
         font-size: 18px;
         font-weight: bold;
-      }
-      .amount-you-pay .table-header {
-        background: #FF5A71;
-      }
-      .amount-employee-gets .table-header {
-        background: #10B981;
-      }
-      .setup-summary .table-header {
-        background: #3B82F6;
       }
       table {
         width: 100%;
         border-collapse: collapse;
         background: white;
+        page-break-inside: avoid !important;
       }
       th, td {
         padding: 12px 15px;
@@ -91,12 +86,14 @@ export const generatePDF = async (element: HTMLElement, data: QuoteData, formDat
         font-weight: 600;
       }
       td {
-        font-size: 14px;
+        font-size: 15px;
         color: #111827;
+        font-weight: 500;
       }
       .currency-column {
         text-align: right;
         font-weight: 500;
+        font-size: 15px;
       }
       .subtotal-row {
         background: #f9fafb;
@@ -152,9 +149,9 @@ export const generatePDF = async (element: HTMLElement, data: QuoteData, formDat
       <h2 style="color: #333; font-size: 24px; margin-bottom: 20px;">Employment Quote Summary</h2>
       
       <div style="display: block;">
-        ${createTableHTML('Amount You Pay', data.payFields, 'amount-you-pay', true)}
-        ${createTableHTML('Amount Employee Gets', data.employeeFields, 'amount-employee-gets', false)}
-        ${data.setupSummary.length > 0 ? createTableHTML('Setup Summary', data.setupSummary, 'setup-summary', true) : ''}
+        ${createTableHTML('Amount You Pay', data.payFields, 'amount-you-pay', true, data)}
+        ${createTableHTML('Amount Employee Gets', data.employeeFields, 'amount-employee-gets', false, data)}
+        ${data.setupSummary.length > 0 ? createTableHTML('Setup Summary', data.setupSummary, 'setup-summary', true, data) : ''}
       </div>
     `;
 
@@ -193,7 +190,8 @@ export const generatePDF = async (element: HTMLElement, data: QuoteData, formDat
       scale: 2,
       useCORS: true,
       allowTaint: true,
-      backgroundColor: '#ffffff'
+      backgroundColor: '#ffffff',
+      letterRendering: true
     });
 
     document.body.removeChild(pdfContainer);
@@ -227,12 +225,10 @@ export const generatePDF = async (element: HTMLElement, data: QuoteData, formDat
   }
 };
 
-const createTableHTML = (title: string, fields: any[], containerClass: string, showTotal: boolean = true): string => {
+const createTableHTML = (title: string, fields: any[], containerClass: string, showTotal: boolean = true, data: QuoteData): string => {
   if (fields.length === 0) return '';
 
   const total = fields.reduce((sum, field) => sum + field.amount, 0);
-  
-  const formatNumber = (amount: number): string => amount.toFixed(2);
   
   return `
     <div class="table-container ${containerClass}">
@@ -250,7 +246,7 @@ const createTableHTML = (title: string, fields: any[], containerClass: string, s
             <tr>
               <td>${field.label}</td>
               <td class="currency-column">
-                ${formatNumber(field.localAmount || field.amount)} ${field.currency}
+                ${formatNumber(field.localAmount || field.amount)} ${data.localCurrency}
               </td>
               <td class="currency-column">
                 ${formatNumber(field.usdAmount || (field.amount))} USD
@@ -261,7 +257,7 @@ const createTableHTML = (title: string, fields: any[], containerClass: string, s
           <tr class="total-row">
             <td><strong>Total</strong></td>
             <td class="currency-column">
-              <strong>${formatNumber(total)} ${fields[0]?.currency || 'USD'}</strong>
+              <strong>${formatNumber(total)} ${data.localCurrency}</strong>
             </td>
             <td class="currency-column">
               <strong>${formatNumber(total)} USD</strong>

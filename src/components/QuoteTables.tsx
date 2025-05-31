@@ -2,6 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { QuoteData, FormData, ParsedField } from './QuoteGenerator';
+import { formatNumber } from '../utils/formatters';
 
 interface QuoteTablesProps {
   data: QuoteData;
@@ -47,11 +48,6 @@ const overrideLabel = (label: string, tableType: 'pay' | 'employee' | 'setup'): 
 };
 
 const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
-  const formatNumber = (amount: number): string => {
-    // Format without thousand separators, using . for decimals only
-    return amount.toFixed(2);
-  };
-
   const formatCurrency = (amount: number, currency: string): string => {
     return `${formatNumber(amount)} ${currency}`;
   };
@@ -59,7 +55,8 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
   // Special calculation for Amount You Pay table
   const calculatePayTableTotal = (fields: ParsedField[]) => {
     const totalMonthlyCost = fields.find(f => 
-      f.label.toLowerCase().includes('total monthly cost')
+      f.label.toLowerCase().includes('total monthly cost') || 
+      f.label.toLowerCase().includes('total employment cost')
     );
     const eorFee = fields.find(f => f.label.toLowerCase().includes('ontop eor fee'));
     const dismissalDeposit = fields.find(f => f.label.toLowerCase().includes('dismissal deposit'));
@@ -94,12 +91,12 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
     isSetupTable?: boolean;
   }) => {
     const totals = isPayTable ? calculatePayTableTotal(fields) : calculateTotal(fields);
-    const showTotal = isPayTable || isSetupTable; // Only show totals for Pay and Setup tables
+    const showTotal = isPayTable || isSetupTable;
     const tableType = isPayTable ? 'pay' : isEmployeeTable ? 'employee' : 'setup';
     
     return (
       <Card className="rounded-2xl shadow-lg border-0 overflow-hidden">
-        <CardHeader className={`${colorClass} text-white`}>
+        <CardHeader className="bg-[#FF5A71] text-white">
           <CardTitle className="text-xl font-semibold">{title}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -190,14 +187,14 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
         <TableCard
           title="Amount Employee Gets"
           fields={data.employeeFields}
-          colorClass="bg-green-600"
+          colorClass="bg-[#FF5A71]"
           isEmployeeTable={true}
         />
         
         <TableCard
           title="Setup Summary"
           fields={data.setupSummary}
-          colorClass="bg-blue-600"
+          colorClass="bg-[#FF5A71]"
           isSetupTable={true}
         />
       </div>
@@ -206,7 +203,7 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
       {data.exchangeRate !== 1 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-800">
-            <strong>Exchange Rate:</strong> 1 {data.localCurrency} = {(1/data.exchangeRate).toFixed(4)} USD
+            <strong>Exchange Rate:</strong> 1 {data.localCurrency} = {formatNumber(1/data.exchangeRate)} USD
             <br />
             <em>Rates are indicative and may vary. Contracts are always processed in local currency.</em>
           </p>
