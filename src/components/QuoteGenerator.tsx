@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import DualImageUpload from './DualImageUpload';
 import QuoteTables from './QuoteTables';
+import QuoteLayout from './QuoteLayout';
 import DebugPanel from './DebugPanel';
 import QuoteForm from './QuoteForm';
 import { generatePDF } from '../utils/pdfGenerator';
@@ -491,17 +492,9 @@ const QuoteGenerator = () => {
         {currentStep === 3 && quoteData && (
           <div className="space-y-8">
             <div ref={quoteRef}>
-              <QuoteTables data={quoteData} formData={formData} />
-            </div>
-
-            {/* Disclaimers */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-medium text-blue-900 mb-2">Important Notes:</h4>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Currency conversions based on rates on {new Date().toLocaleDateString()}, may vary—contracts always in local currency.</li>
-                <li>• Setup Cost = one month's salary (Security Deposit) + Ontop fee; secures Ontop against potential defaults.</li>
-                <li>• Dismissal Deposit = one-twelfth of salary, provisioned for future termination costs.</li>
-              </ul>
+              <QuoteLayout data={quoteData} formData={formData}>
+                <QuoteTables data={quoteData} formData={formData} />
+              </QuoteLayout>
             </div>
 
             {/* Debug Panel */}

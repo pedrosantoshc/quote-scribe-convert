@@ -1,5 +1,4 @@
-
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Camera, Loader2, CheckCircle, X, ChevronDown, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -21,9 +20,49 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
   const [employeeOcrDone, setEmployeeOcrDone] = useState(false);
   const [showPayOcr, setShowPayOcr] = useState(false);
   const [showEmployeeOcr, setShowEmployeeOcr] = useState(false);
+  const [activeUploadType, setActiveUploadType] = useState<'pay' | 'employee' | null>(null);
   
   const payFileInputRef = useRef<HTMLInputElement>(null);
   const employeeFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Add clipboard paste support
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      
+      if (items && activeUploadType) {
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image') !== -1) {
+            const blob = items[i].getAsFile();
+            if (blob) {
+              handleImageUpload(blob, activeUploadType);
+            }
+          }
+        }
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [activeUploadType]);
+
+  const handleImageUpload = (file: File, type: 'pay' | 'employee') => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageDataUrl = e.target?.result as string;
+      if (type === 'pay') {
+        setPayImage(imageDataUrl);
+        setPayOcrDone(false);
+        setPayOcrText('');
+      } else {
+        setEmployeeImage(imageDataUrl);
+        setEmployeeOcrDone(false);
+        setEmployeeOcrText('');
+      }
+      processImage(imageDataUrl, type);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const processImage = async (imageDataUrl: string, type: 'pay' | 'employee') => {
     try {
@@ -70,21 +109,7 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>, type: 'pay' | 'employee') => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageDataUrl = e.target?.result as string;
-        if (type === 'pay') {
-          setPayImage(imageDataUrl);
-          setPayOcrDone(false);
-          setPayOcrText('');
-        } else {
-          setEmployeeImage(imageDataUrl);
-          setEmployeeOcrDone(false);
-          setEmployeeOcrText('');
-        }
-        processImage(imageDataUrl, type);
-      };
-      reader.readAsDataURL(file);
+      handleImageUpload(file, type);
     }
   };
 
@@ -92,21 +117,7 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
     event.preventDefault();
     const file = event.dataTransfer.files[0];
     if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageDataUrl = e.target?.result as string;
-        if (type === 'pay') {
-          setPayImage(imageDataUrl);
-          setPayOcrDone(false);
-          setPayOcrText('');
-        } else {
-          setEmployeeImage(imageDataUrl);
-          setEmployeeOcrDone(false);
-          setEmployeeOcrText('');
-        }
-        processImage(imageDataUrl, type);
-      };
-      reader.readAsDataURL(file);
+      handleImageUpload(file, type);
     }
   };
 
@@ -176,6 +187,9 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
         }`}
         onDrop={(e) => handleDrop(e, type)}
         onDragOver={handleDragOver}
+        onFocus={() => setActiveUploadType(type)}
+        onBlur={() => setActiveUploadType(null)}
+        tabIndex={0}
       >
         <input
           ref={fileInputRef}
@@ -218,10 +232,13 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
             <Camera className="w-8 h-8 mx-auto text-gray-400" />
             <div>
               <p className="text-gray-600 mb-3">
-                Drag and drop an image here, or click to select
+                Drag and drop, paste (Ctrl+V), or click to select
               </p>
               <Button
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  setActiveUploadType(type);
+                  fileInputRef.current?.click();
+                }}
                 variant="outline"
                 className="rounded-full px-4"
                 size="sm"
@@ -327,6 +344,7 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
         <h4 className="font-medium text-blue-900 mb-2">Upload Instructions:</h4>
         <ul className="text-sm text-blue-800 space-y-1">
           <li>• Upload clear screenshots of both Multiplier tables</li>
+          <li>• Use drag & drop, paste images (Ctrl+V), or click to select</li>
           <li>• Ensure text is readable and not blurry</li>
           <li>• Use "Show Raw OCR" to verify the text was extracted correctly</li>
           <li>• Click "Analyze Screenshots" when both uploads are complete</li>
