@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { QuoteData, FormData, ParsedField } from './QuoteGenerator';
-import { formatNumber } from '../utils/formatters';
+import { formatAmount, formatExchangeRate } from '../utils/formatters';
 
 interface QuoteTablesProps {
   data: QuoteData;
@@ -55,7 +55,7 @@ const overrideLabel = (label: string, tableType: 'pay' | 'employee' | 'setup'): 
 
 const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
   const formatCurrency = (amount: number, currency: string): string => {
-    return `${formatNumber(amount)} ${currency}`;
+    return `${formatAmount(amount)} ${currency}`;
   };
 
   // Special calculation for Amount You Pay table
@@ -174,6 +174,97 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
     );
   };
 
+  const SetupSummarySection = () => {
+    const currentDate = new Date().toLocaleDateString();
+    
+    // Calculate values for setup summary
+    const grossSalaryField = data.payFields.find(field => 
+      field.label.toLowerCase().includes('gross') && field.label.toLowerCase().includes('salary')
+    );
+    const eorFeeField = data.payFields.find(field => 
+      field.label.toLowerCase().includes('ontop eor fee')
+    );
+    
+    const grossSalaryLocal = grossSalaryField?.localAmount || 0;
+    const grossSalaryUSD = grossSalaryField?.usdAmount || 0;
+    const eorFeeLocal = eorFeeField?.localAmount || 0;
+    const eorFeeUSD = eorFeeField?.usdAmount || 0;
+    
+    const totalSetupLocal = grossSalaryLocal + eorFeeLocal;
+    const totalSetupUSD = grossSalaryUSD + eorFeeUSD;
+
+    return (
+      <div className="setup-summary-container">
+        <Card className="rounded-2xl shadow-lg border-0 overflow-hidden mb-6">
+          <CardHeader className="bg-[#FF5A71] text-white">
+            <CardTitle className="text-xl font-semibold">Setup Summary</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Description</th>
+                  <th className="px-6 py-4 text-right text-sm font-medium text-gray-900">
+                    Local ({data.localCurrency})
+                  </th>
+                  <th className="px-6 py-4 text-right text-sm font-medium text-gray-900">
+                    USD
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                <tr>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    Security Deposit (1 month salary)
+                  </td>
+                  <td className="px-6 py-4 text-right text-sm font-medium">
+                    {formatAmount(grossSalaryLocal)} {data.localCurrency}
+                  </td>
+                  <td className="px-6 py-4 text-right text-sm font-medium">
+                    {formatAmount(grossSalaryUSD)} USD
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    Ontop EOR Fee
+                  </td>
+                  <td className="px-6 py-4 text-right text-sm font-medium">
+                    {formatAmount(eorFeeLocal)} {data.localCurrency}
+                  </td>
+                  <td className="px-6 py-4 text-right text-sm font-medium">
+                    {formatAmount(eorFeeUSD)} USD
+                  </td>
+                </tr>
+                <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    Total Setup Fee
+                  </td>
+                  <td className="px-6 py-4 text-right text-sm font-bold">
+                    {formatAmount(totalSetupLocal)} {data.localCurrency}
+                  </td>
+                  <td className="px-6 py-4 text-right text-sm font-bold">
+                    {formatAmount(totalSetupUSD)} USD
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+        <div className="important-notes mt-6 space-y-2">
+          <h3 className="font-medium text-gray-900">Important Notes:</h3>
+          <ul className="text-sm text-gray-600 space-y-1">
+            <li>• Currency conversions based on rates on {currentDate}, may vary—contracts always in local currency.</li>
+            <li>• Setup Cost = one month's salary (Security Deposit) + Ontop fee; secures Ontop against potential defaults.</li>
+            <li>• Dismissal Deposit = one-twelfth of salary, provisioned for future termination costs.</li>
+          </ul>
+          <p className="text-sm text-gray-500 mt-4">
+            Generated by Ontop Quote Generator • {currentDate}
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -200,19 +291,14 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
           isEmployeeTable={true}
         />
         
-        <TableCard
-          title="Setup Summary"
-          fields={data.setupSummary}
-          colorClass="bg-[#FF5A71]"
-          isSetupTable={true}
-        />
+        <SetupSummarySection />
       </div>
 
       {/* Exchange Rate Info */}
       {data.exchangeRate !== 1 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-800">
-            <strong>Exchange Rate:</strong> 1 {data.localCurrency} = {formatNumber(1/data.exchangeRate)} USD
+            <strong>Exchange Rate:</strong> {formatExchangeRate(1/data.exchangeRate)} {data.localCurrency}/USD
             <br />
             <em>Rates are indicative and may vary. Contracts are always processed in local currency.</em>
           </p>
