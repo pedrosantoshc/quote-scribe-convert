@@ -3,179 +3,281 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { QuoteData, FormData } from '../components/QuoteGenerator';
 
-export const generatePDF = async (element: HTMLElement, data: QuoteData, formData: FormData): Promise<void> => {
+const PDF_SPECS = {
+  PAGE: {
+    WIDTH: 595.28,  // A4 width in points
+    HEIGHT: 841.89, // A4 height in points
+    MARGINS: {
+      TOP: 40,
+      BOTTOM: 40,
+      LEFT: 40,
+      RIGHT: 40
+    }
+  },
+  HEADER: {
+    HEIGHT: 80,
+    LOGO_HEIGHT: 32,
+    TEXT_SIZE: 14
+  },
+  TABLE: {
+    ROW_HEIGHT: 35,
+    PADDING: 12,
+    FONT_SIZE: 12,
+    HEADING_HEIGHT: 45
+  },
+  COLORS: {
+    ONTOP_PINK: '#FF5A71',
+    LIGHT_PINK: '#FFF1F3',
+    BLUE_BG: '#EBF5FF',
+    TEXT: '#1A1A1A',
+    TEXT_LIGHT: '#4A5568'
+  },
+  VALIDATION: {
+    MIN_HEIGHT: 35,    // Minimum row height
+    MAX_HEIGHT: 1000,  // Maximum section height
+    MIN_WIDTH: 400,    // Minimum content width
+    MAX_WIDTH: 595     // Maximum content width (A4)
+  }
+};
+
+const validatePDFElement = (element: HTMLElement, type: 'header' | 'table' | 'footer'): boolean => {
+  const validation = {
+    isValid: true,
+    errors: [] as string[]
+  };
+
+  // Check dimensions
+  const rect = element.getBoundingClientRect();
+  
+  if (rect.width < PDF_SPECS.VALIDATION.MIN_WIDTH || 
+      rect.width > PDF_SPECS.VALIDATION.MAX_WIDTH) {
+    validation.errors.push(`Invalid width: ${rect.width}px`);
+    validation.isValid = false;
+  }
+
+  if (rect.height < PDF_SPECS.VALIDATION.MIN_HEIGHT || 
+      rect.height > PDF_SPECS.VALIDATION.MAX_HEIGHT) {
+    validation.errors.push(`Invalid height: ${rect.height}px`);
+    validation.isValid = false;
+  }
+
+  // Check styles
+  const styles = window.getComputedStyle(element);
+  
+  if (type === 'header' && 
+      !styles.backgroundColor.includes('255, 90, 113')) { // Check for Ontop pink RGB
+    validation.errors.push('Invalid header background color');
+    validation.isValid = false;
+  }
+
+  if (type === 'footer' && 
+      !styles.backgroundColor.includes('235, 245, 255')) { // Check for blue background RGB
+    validation.errors.push('Invalid footer background color');
+    validation.isValid = false;
+  }
+
+  // Log any validation errors
+  if (!validation.isValid) {
+    console.error(`PDF ${type} validation failed:`, validation.errors);
+  }
+
+  return validation.isValid;
+};
+
+export const generateQuotePDF = async (formData: FormData) => {
   try {
-    // Constants for layout
-    const PAGE = {
-      WIDTH: 595.28,
-      HEIGHT: 841.89,
-      MARGIN: 50,
-      SPACING: 20
-    };
+    // Initialize PDF
+    const doc = new jsPDF({
+      format: 'a4',
+      unit: 'pt'
+    });
 
-    // Improved section capture with explicit styling preservation
-    const captureSection = async (selector: string, options: {
-      padding?: number;
-      preserveBackground?: boolean;
-      extraStyles?: Record<string, string>;
-    } = {}) => {
-      const section = element.querySelector(selector) as HTMLElement;
-      if (!section) {
-        console.warn(`Section not found: ${selector}`);
-        return null;
-      }
+    let currentY = 0;
+    const currentDate = new Date().toLocaleDateString();
+    const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString();
 
-      // Create a temporary container with fixed width
-      const container = document.createElement('div');
-      container.style.position = 'absolute';
-      container.style.left = '-9999px';
-      container.style.width = `${PAGE.WIDTH - (2 * PAGE.MARGIN)}px`;
-      container.style.boxSizing = 'border-box';
-      
-      // Clone the section with all its content
-      const clone = section.cloneNode(true) as HTMLElement;
-      const computed = window.getComputedStyle(section);
-      
-      // Apply computed styles to preserve appearance
-      Object.assign(clone.style, {
-        backgroundColor: computed.backgroundColor,
-        borderRadius: computed.borderRadius,
-        padding: options.padding ? `${options.padding}px` : computed.padding,
-        margin: '0',
-        width: '100%',
-        boxSizing: 'border-box',
-        fontFamily: computed.fontFamily,
-        fontSize: computed.fontSize,
-        lineHeight: computed.lineHeight,
-        color: computed.color
-      });
+    // 1. Generate Header Banner
+    const header = document.createElement('div');
+    header.style.cssText = `
+      height: ${PDF_SPECS.HEADER.HEIGHT}px;
+      background-color: ${PDF_SPECS.COLORS.ONTOP_PINK};
+      padding: ${PDF_SPECS.PAGE.MARGINS.TOP}px;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: ${PDF_SPECS.PAGE.WIDTH}px;
+      box-sizing: border-box;
+    `;
+    
+    header.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 16px; margin-left: ${PDF_SPECS.PAGE.MARGINS.LEFT}px">
+        <div style="width: ${PDF_SPECS.HEADER.LOGO_HEIGHT}px; height: ${PDF_SPECS.HEADER.LOGO_HEIGHT}px; background-color: white; border-radius: 4px;"></div>
+        <div>
+          <h1 style="font-size: 24px; margin: 0; font-weight: bold;">Ontop</h1>
+          <p style="font-size: ${PDF_SPECS.HEADER.TEXT_SIZE}px; margin: 0; opacity: 0.9;">
+            Global Employment Solutions
+          </p>
+        </div>
+      </div>
+      <div style="text-align: right; margin-right: ${PDF_SPECS.PAGE.MARGINS.RIGHT}px; font-size: ${PDF_SPECS.HEADER.TEXT_SIZE}px;">
+        <p style="margin: 4px 0;">Quote Sender: ${formData.aeName}</p>
+        <p style="margin: 4px 0;">Client Name: ${formData.clientName}</p>
+        <p style="margin: 4px 0;">Valid Until: ${validUntil}</p>
+      </div>
+    `;
 
-      // Apply extra styles if provided
-      if (options.extraStyles) {
-        Object.assign(clone.style, options.extraStyles);
-      }
+    document.body.appendChild(header);
 
-      container.appendChild(clone);
-      document.body.appendChild(container);
-
-      // Wait for styles and layout to be applied
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      // Capture with high resolution
-      const canvas = await html2canvas(container, {
+    // Validate and add header
+    if (validatePDFElement(header, 'header')) {
+      const headerCanvas = await html2canvas(header, {
         scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: null,
-        logging: false,
-        width: container.offsetWidth,
-        height: container.offsetHeight
+        backgroundColor: PDF_SPECS.COLORS.ONTOP_PINK,
+        logging: false
       });
-
-      document.body.removeChild(container);
       
-      console.log(`Captured section ${selector}: ${canvas.width}x${canvas.height}`);
+      doc.addImage(
+        headerCanvas, 
+        'PNG', 
+        0, 
+        currentY, 
+        PDF_SPECS.PAGE.WIDTH, 
+        PDF_SPECS.HEADER.HEIGHT
+      );
       
-      return {
-        canvas,
-        selector,
-        height: canvas.height
-      };
-    };
-
-    console.log('Starting PDF generation...');
-
-    // Capture all sections in order
-    const sections = await Promise.all([
-      captureSection('.quote-header', { padding: 40 }),
-      captureSection('.amount-you-pay', { padding: 20 }),
-      captureSection('.amount-employee-gets', { padding: 20 }),
-      captureSection('.setup-summary-container', { padding: 20 }),
-      captureSection('.quote-footer', { 
-        padding: 24,
-        preserveBackground: true,
-        extraStyles: {
-          borderRadius: '8px',
-          backgroundColor: 'rgb(239, 246, 255)', // bg-blue-50
-          border: '1px solid rgb(219, 234, 254)' // border-blue-200
-        }
-      })
-    ]);
-
-    // Filter out null sections
-    const validSections = sections.filter(section => section !== null);
-
-    if (validSections.length === 0) {
-      throw new Error('No valid sections found for PDF generation');
+      currentY += PDF_SPECS.HEADER.HEIGHT + 20;
     }
 
-    console.log(`Found ${validSections.length} valid sections`);
+    document.body.removeChild(header);
 
-    // Calculate page layout
-    const USABLE_HEIGHT = PAGE.HEIGHT - (2 * PAGE.MARGIN);
-    const pages: any[][] = [[]];
-    let currentPageHeight = 0;
-
-    validSections.forEach((section) => {
-      const scale = (PAGE.WIDTH - (2 * PAGE.MARGIN)) / section.canvas.width;
-      const scaledHeight = section.canvas.height * scale;
-      const sectionHeight = scaledHeight + PAGE.SPACING;
-
-      // Check if we need a new page
-      if (currentPageHeight + sectionHeight > USABLE_HEIGHT && pages[pages.length - 1].length > 0) {
-        pages.push([]);
-        currentPageHeight = 0;
-      }
-
-      pages[pages.length - 1].push(section);
-      currentPageHeight += sectionHeight;
-    });
-
-    console.log(`Generating PDF with ${pages.length} pages...`);
-
-    // Generate PDF
-    const pdf = new jsPDF({
-      unit: 'pt',
-      format: 'a4',
-      orientation: 'portrait'
-    });
-
-    pages.forEach((pageSections, pageIndex) => {
-      if (pageIndex > 0) {
-        pdf.addPage();
-      }
-
-      let yOffset = PAGE.MARGIN;
+    // 2. Format Tables
+    const formatTable = (table: HTMLElement) => {
+      const clone = table.cloneNode(true) as HTMLElement;
+      clone.style.width = `${PDF_SPECS.PAGE.WIDTH - (PDF_SPECS.PAGE.MARGINS.LEFT + PDF_SPECS.PAGE.MARGINS.RIGHT)}px`;
+      clone.style.fontSize = `${PDF_SPECS.TABLE.FONT_SIZE}px`;
       
-      pageSections.forEach((section) => {
-        // Calculate scale to fit width while maintaining aspect ratio
-        const scale = (PAGE.WIDTH - (2 * PAGE.MARGIN)) / section.canvas.width;
-        const scaledWidth = section.canvas.width * scale;
-        const scaledHeight = section.canvas.height * scale;
+      clone.querySelectorAll('tr').forEach(row => {
+        (row as HTMLElement).style.height = `${PDF_SPECS.TABLE.ROW_HEIGHT}px`;
+      });
 
-        // Center horizontally
-        const xOffset = PAGE.MARGIN + ((PAGE.WIDTH - (2 * PAGE.MARGIN) - scaledWidth) / 2);
-        
-        console.log(`Adding section ${section.selector} to page ${pageIndex + 1} at position (${xOffset}, ${yOffset})`);
-        
-        pdf.addImage(
-          section.canvas.toDataURL('image/png'),
+      clone.querySelectorAll('td, th').forEach(cell => {
+        (cell as HTMLElement).style.padding = `${PDF_SPECS.TABLE.PADDING}px`;
+        if (cell.classList.contains('text-right')) {
+          (cell as HTMLElement).style.textAlign = 'right';
+        }
+      });
+
+      return clone;
+    };
+
+    // 3. Add Tables with Proper Spacing
+    const tables = [
+      '.amount-you-pay',
+      '.amount-employee-gets',
+      '.setup-summary-container'
+    ];
+
+    for (const tableSelector of tables) {
+      const table = document.querySelector(tableSelector);
+      if (!table) continue;
+
+      const formattedTable = formatTable(table as HTMLElement);
+      document.body.appendChild(formattedTable);
+      
+      if (validatePDFElement(formattedTable, 'table')) {
+        // Check if need new page
+        if (currentY + formattedTable.offsetHeight > PDF_SPECS.PAGE.HEIGHT - PDF_SPECS.PAGE.MARGINS.BOTTOM) {
+          doc.addPage();
+          currentY = PDF_SPECS.PAGE.MARGINS.TOP;
+        }
+
+        const tableCanvas = await html2canvas(formattedTable, {
+          scale: 2,
+          backgroundColor: null,
+          logging: false
+        });
+
+        doc.addImage(
+          tableCanvas,
           'PNG',
-          xOffset,
-          yOffset,
-          scaledWidth,
-          scaledHeight
+          PDF_SPECS.PAGE.MARGINS.LEFT,
+          currentY,
+          PDF_SPECS.PAGE.WIDTH - (PDF_SPECS.PAGE.MARGINS.LEFT + PDF_SPECS.PAGE.MARGINS.RIGHT),
+          tableCanvas.height / 2
         );
 
-        yOffset += scaledHeight + PAGE.SPACING;
+        currentY += (tableCanvas.height / 2) + 20;
+      }
+
+      document.body.removeChild(formattedTable);
+    }
+
+    // 4. Add Footer with Important Notes
+    const footer = document.createElement('div');
+    footer.style.cssText = `
+      margin: ${PDF_SPECS.PAGE.MARGINS.LEFT}px;
+      padding: 24px;
+      background-color: ${PDF_SPECS.COLORS.BLUE_BG};
+      border-radius: 8px;
+      font-size: ${PDF_SPECS.TABLE.FONT_SIZE}px;
+      width: ${PDF_SPECS.PAGE.WIDTH - (PDF_SPECS.PAGE.MARGINS.LEFT + PDF_SPECS.PAGE.MARGINS.RIGHT) - 48}px;
+      box-sizing: border-box;
+    `;
+
+    footer.innerHTML = `
+      <h3 style="color: #2B4B80; margin-bottom: 12px; font-weight: 500; font-size: 14px;">Important Notes:</h3>
+      <ul style="color: #2B4B80; margin: 0; padding-left: 20px; line-height: 1.5;">
+        <li style="margin-bottom: 8px;">Currency conversions based on rates on ${currentDate}, may vary—contracts always in local currency.</li>
+        <li style="margin-bottom: 8px;">Setup Cost = one month's salary (Security Deposit) + Ontop fee; secures Ontop against potential defaults.</li>
+        <li style="margin-bottom: 8px;">Dismissal Deposit = one-twelfth of salary, provisioned for future termination costs.</li>
+      </ul>
+      <p style="color: #64748B; margin-top: 16px; font-size: 11px;">
+        Generated by Ontop Quote Generator • ${currentDate}
+      </p>
+    `;
+
+    document.body.appendChild(footer);
+
+    // Validate and add footer
+    if (validatePDFElement(footer, 'footer')) {
+      // Check if need new page for footer
+      if (currentY + 200 > PDF_SPECS.PAGE.HEIGHT - PDF_SPECS.PAGE.MARGINS.BOTTOM) {
+        doc.addPage();
+        currentY = PDF_SPECS.PAGE.MARGINS.TOP;
+      }
+
+      const footerCanvas = await html2canvas(footer, {
+        scale: 2,
+        backgroundColor: PDF_SPECS.COLORS.BLUE_BG,
+        logging: false
       });
-    });
 
-    // Save the PDF
+      doc.addImage(
+        footerCanvas,
+        'PNG',
+        PDF_SPECS.PAGE.MARGINS.LEFT,
+        currentY,
+        PDF_SPECS.PAGE.WIDTH - (PDF_SPECS.PAGE.MARGINS.LEFT + PDF_SPECS.PAGE.MARGINS.RIGHT),
+        footerCanvas.height / 2
+      );
+    }
+
+    document.body.removeChild(footer);
+
+    return doc;
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    throw error;
+  }
+};
+
+// Legacy function for backward compatibility
+export const generatePDF = async (element: HTMLElement, data: QuoteData, formData: FormData): Promise<void> => {
+  try {
+    const doc = await generateQuotePDF(formData);
     const fileName = `Ontop-Quote-${formData.clientName.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
-    console.log('Saving PDF:', fileName);
-    pdf.save(fileName);
-
+    doc.save(fileName);
   } catch (error) {
     console.error('Error generating PDF:', error);
     throw error;
