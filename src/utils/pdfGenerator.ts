@@ -13,63 +13,73 @@ export const generatePDF = async (element: HTMLElement, data: QuoteData, formDat
       SPACING: 20
     };
 
-    const MIN_HEIGHTS = {
-      header: 100,
-      notes: 200
-    };
-
-    // Helper to measure with proper padding
-    const measureSection = async (
-      selector: string,
-      options: { padding?: number; minHeight?: number } = {}
-    ) => {
+    // Helper to capture styled content
+    const captureStyledSection = async (selector: string, options: {
+      preserveBackground?: boolean;
+      padding?: number;
+      extraStyles?: Record<string, string>;
+    } = {}) => {
       const section = element.querySelector(selector) as HTMLElement;
       if (!section) return null;
 
-      // Create a measurement container
       const container = document.createElement('div');
       container.style.position = 'absolute';
       container.style.left = '-9999px';
-      container.style.padding = `${options.padding || 20}px`;
+      container.style.width = 'auto';
       
-      // Clone with styles
       const clone = section.cloneNode(true) as HTMLElement;
+      
+      // Apply styles
+      if (options.preserveBackground) {
+        container.style.backgroundColor = window.getComputedStyle(section).backgroundColor;
+      }
+      if (options.padding) {
+        container.style.padding = `${options.padding}px`;
+      }
+      if (options.extraStyles) {
+        Object.assign(container.style, options.extraStyles);
+      }
+      
       container.appendChild(clone);
       document.body.appendChild(container);
-
-      // Ensure minimum height
-      if (options.minHeight) {
-        container.style.minHeight = `${options.minHeight}px`;
-      }
-
+      
+      // Wait for styles to be applied
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const canvas = await html2canvas(container, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
         logging: false,
-        backgroundColor: null // Preserve transparency
+        backgroundColor: null
       });
-
+      
       document.body.removeChild(container);
       
       return {
         element: section,
-        height: Math.max(canvas.height, options.minHeight || 0),
+        height: canvas.height,
         canvas,
-        type: selector.replace('.', ''),
         selector
       };
     };
 
     console.log('Starting PDF generation...');
 
-    // Measure all sections
+    // Capture sections with proper styling
     const sections = await Promise.all([
-      measureSection('.header', { padding: 40, minHeight: MIN_HEIGHTS.header }),
-      measureSection('.amount-you-pay', { padding: 20 }),
-      measureSection('.amount-employee-gets', { padding: 20 }),
-      measureSection('.setup-summary-container', { padding: 20 }),
-      measureSection('.important-notes', { padding: 30, minHeight: MIN_HEIGHTS.notes })
+      captureStyledSection('.header', { padding: 40 }),
+      captureStyledSection('.amount-you-pay', { padding: 20 }),
+      captureStyledSection('.amount-employee-gets', { padding: 20 }),
+      captureStyledSection('.setup-summary-container', { padding: 20 }),
+      captureStyledSection('.quote-footer', { 
+        preserveBackground: true,
+        padding: 24,
+        extraStyles: {
+          borderRadius: '8px',
+          marginTop: '32px'
+        }
+      })
     ]);
 
     // Filter out null sections
