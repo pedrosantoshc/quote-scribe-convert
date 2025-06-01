@@ -13,71 +13,91 @@ export const generatePDF = async (element: HTMLElement, data: QuoteData, formDat
       SPACING: 20
     };
 
-    // Helper to capture styled content
-    const captureStyledSection = async (selector: string, options: {
-      preserveBackground?: boolean;
+    // Improved section capture with explicit styling preservation
+    const captureSection = async (selector: string, options: {
       padding?: number;
+      preserveBackground?: boolean;
       extraStyles?: Record<string, string>;
     } = {}) => {
       const section = element.querySelector(selector) as HTMLElement;
-      if (!section) return null;
+      if (!section) {
+        console.warn(`Section not found: ${selector}`);
+        return null;
+      }
 
+      // Create a temporary container with fixed width
       const container = document.createElement('div');
       container.style.position = 'absolute';
       container.style.left = '-9999px';
-      container.style.width = 'auto';
+      container.style.width = `${PAGE.WIDTH - (2 * PAGE.MARGIN)}px`;
+      container.style.boxSizing = 'border-box';
       
+      // Clone the section with all its content
       const clone = section.cloneNode(true) as HTMLElement;
+      const computed = window.getComputedStyle(section);
       
-      // Apply styles
-      if (options.preserveBackground) {
-        container.style.backgroundColor = window.getComputedStyle(section).backgroundColor;
-      }
-      if (options.padding) {
-        container.style.padding = `${options.padding}px`;
-      }
+      // Apply computed styles to preserve appearance
+      Object.assign(clone.style, {
+        backgroundColor: computed.backgroundColor,
+        borderRadius: computed.borderRadius,
+        padding: options.padding ? `${options.padding}px` : computed.padding,
+        margin: '0',
+        width: '100%',
+        boxSizing: 'border-box',
+        fontFamily: computed.fontFamily,
+        fontSize: computed.fontSize,
+        lineHeight: computed.lineHeight,
+        color: computed.color
+      });
+
+      // Apply extra styles if provided
       if (options.extraStyles) {
-        Object.assign(container.style, options.extraStyles);
+        Object.assign(clone.style, options.extraStyles);
       }
-      
+
       container.appendChild(clone);
       document.body.appendChild(container);
-      
-      // Wait for styles to be applied
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+
+      // Wait for styles and layout to be applied
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Capture with high resolution
       const canvas = await html2canvas(container, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
+        backgroundColor: null,
         logging: false,
-        backgroundColor: null
+        width: container.offsetWidth,
+        height: container.offsetHeight
       });
-      
+
       document.body.removeChild(container);
       
+      console.log(`Captured section ${selector}: ${canvas.width}x${canvas.height}`);
+      
       return {
-        element: section,
-        height: canvas.height,
         canvas,
-        selector
+        selector,
+        height: canvas.height
       };
     };
 
     console.log('Starting PDF generation...');
 
-    // Capture sections with proper styling
+    // Capture all sections in order
     const sections = await Promise.all([
-      captureStyledSection('.header', { padding: 40 }),
-      captureStyledSection('.amount-you-pay', { padding: 20 }),
-      captureStyledSection('.amount-employee-gets', { padding: 20 }),
-      captureStyledSection('.setup-summary-container', { padding: 20 }),
-      captureStyledSection('.quote-footer', { 
-        preserveBackground: true,
+      captureSection('.quote-header', { padding: 40 }),
+      captureSection('.amount-you-pay', { padding: 20 }),
+      captureSection('.amount-employee-gets', { padding: 20 }),
+      captureSection('.setup-summary-container', { padding: 20 }),
+      captureSection('.quote-footer', { 
         padding: 24,
+        preserveBackground: true,
         extraStyles: {
           borderRadius: '8px',
-          marginTop: '32px'
+          backgroundColor: 'rgb(239, 246, 255)', // bg-blue-50
+          border: '1px solid rgb(219, 234, 254)' // border-blue-200
         }
       })
     ]);
@@ -89,15 +109,19 @@ export const generatePDF = async (element: HTMLElement, data: QuoteData, formDat
       throw new Error('No valid sections found for PDF generation');
     }
 
-    // Group sections into pages
+    console.log(`Found ${validSections.length} valid sections`);
+
+    // Calculate page layout
     const USABLE_HEIGHT = PAGE.HEIGHT - (2 * PAGE.MARGIN);
     const pages: any[][] = [[]];
     let currentPageHeight = 0;
 
     validSections.forEach((section) => {
-      const sectionHeight = section.height + PAGE.SPACING;
+      const scale = (PAGE.WIDTH - (2 * PAGE.MARGIN)) / section.canvas.width;
+      const scaledHeight = section.canvas.height * scale;
+      const sectionHeight = scaledHeight + PAGE.SPACING;
 
-      // Start new page if needed
+      // Check if we need a new page
       if (currentPageHeight + sectionHeight > USABLE_HEIGHT && pages[pages.length - 1].length > 0) {
         pages.push([]);
         currentPageHeight = 0;
@@ -109,7 +133,7 @@ export const generatePDF = async (element: HTMLElement, data: QuoteData, formDat
 
     console.log(`Generating PDF with ${pages.length} pages...`);
 
-    // Generate PDF with proper spacing
+    // Generate PDF
     const pdf = new jsPDF({
       unit: 'pt',
       format: 'a4',
@@ -132,7 +156,7 @@ export const generatePDF = async (element: HTMLElement, data: QuoteData, formDat
         // Center horizontally
         const xOffset = PAGE.MARGIN + ((PAGE.WIDTH - (2 * PAGE.MARGIN) - scaledWidth) / 2);
         
-        console.log(`Adding section ${section.selector} to page ${pageIndex + 1}`);
+        console.log(`Adding section ${section.selector} to page ${pageIndex + 1} at position (${xOffset}, ${yOffset})`);
         
         pdf.addImage(
           section.canvas.toDataURL('image/png'),
