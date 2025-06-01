@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Camera, Loader2, CheckCircle } from 'lucide-react';
+import { Upload, Camera, Loader2, CheckCircle, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Tesseract from 'tesseract.js';
 
@@ -18,6 +18,7 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
   const [employeeComplete, setEmployeeComplete] = useState(false);
   const [isDraggingPay, setIsDraggingPay] = useState(false);
   const [isDraggingEmployee, setIsDraggingEmployee] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<{pay: File | null, employee: File | null}>({pay: null, employee: null});
   
   const payFileInputRef = useRef<HTMLInputElement>(null);
   const employeeFileInputRef = useRef<HTMLInputElement>(null);
@@ -78,7 +79,8 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
     reader.onload = (e) => {
       const imageDataUrl = e.target?.result as string;
       setPayImage(imageDataUrl);
-      processPayImage(imageDataUrl);
+      setUploadedImages(prev => ({...prev, pay: file}));
+      setPayComplete(false);
     };
     reader.readAsDataURL(file);
   };
@@ -88,7 +90,8 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
     reader.onload = (e) => {
       const imageDataUrl = e.target?.result as string;
       setEmployeeImage(imageDataUrl);
-      processEmployeeImage(imageDataUrl);
+      setUploadedImages(prev => ({...prev, employee: file}));
+      setEmployeeComplete(false);
     };
     reader.readAsDataURL(file);
   };
@@ -113,14 +116,11 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
 
       console.log('Pay OCR completed:', result.data.text);
       setPayComplete(true);
-      
-      // Check if both images are processed
-      if (employeeComplete && employeeImage) {
-        onOCRComplete(result.data.text, ''); // Will be updated when employee is done
-      }
+      return result.data.text;
     } catch (error) {
       console.error('Pay OCR Error:', error);
       setPayComplete(false);
+      return '';
     }
   };
 
@@ -144,14 +144,31 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
 
       console.log('Employee OCR completed:', result.data.text);
       setEmployeeComplete(true);
-      
-      // Check if both images are processed
-      if (payComplete && payImage) {
-        onOCRComplete('', result.data.text); // Will be updated when pay is done
-      }
+      return result.data.text;
     } catch (error) {
       console.error('Employee OCR Error:', error);
       setEmployeeComplete(false);
+      return '';
+    }
+  };
+
+  const handleAnalyzeScreenshots = async () => {
+    if (!payImage || !employeeImage) {
+      console.warn('Both images required for analysis');
+      return;
+    }
+
+    try {
+      // Process both images and get OCR results
+      const [payText, employeeText] = await Promise.all([
+        processPayImage(payImage),
+        processEmployeeImage(employeeImage)
+      ]);
+
+      // Call the completion handler with both results
+      onOCRComplete(payText, employeeText);
+    } catch (error) {
+      console.error('Error analyzing screenshots:', error);
     }
   };
 
@@ -177,19 +194,6 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
     event.preventDefault();
   };
 
-  // Effect to trigger OCR completion when both images are processed
-  useEffect(() => {
-    if (payComplete && employeeComplete && payImage && employeeImage) {
-      // Re-process both images to get the text
-      Promise.all([
-        Tesseract.recognize(payImage, 'eng'),
-        Tesseract.recognize(employeeImage, 'eng')
-      ]).then(([payResult, employeeResult]) => {
-        onOCRComplete(payResult.data.text, employeeResult.data.text);
-      });
-    }
-  }, [payComplete, employeeComplete, payImage, employeeImage, onOCRComplete]);
-
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -202,7 +206,7 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
                 ? 'border-[#FF5A71] bg-[#FFDDE0]/20' 
                 : payComplete
                 ? 'border-green-500 bg-green-50'
-                : isProcessing 
+                : isProcessing && payImage
                 ? 'border-[#FF5A71] bg-[#FFDDE0]/20' 
                 : 'border-gray-300 hover:border-[#FF5A71] hover:bg-[#FFDDE0]/10'
             }`}
@@ -280,7 +284,7 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
                 ? 'border-[#FF5A71] bg-[#FFDDE0]/20' 
                 : employeeComplete
                 ? 'border-green-500 bg-green-50'
-                : isProcessing 
+                : isProcessing && employeeImage
                 ? 'border-[#FF5A71] bg-[#FFDDE0]/20' 
                 : 'border-gray-300 hover:border-[#FF5A71] hover:bg-[#FFDDE0]/10'
             }`}
@@ -350,6 +354,19 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
         </div>
       </div>
 
+      {/* Analyze Screenshots Button */}
+      {payImage && employeeImage && !isProcessing && (
+        <div className="flex justify-center">
+          <Button
+            onClick={handleAnalyzeScreenshots}
+            className="w-full max-w-md px-6 py-3 bg-[#FF5A71] hover:bg-[#FF4461] text-white rounded-full text-lg font-medium transition-colors"
+          >
+            <Play className="w-5 h-5 mr-2" />
+            Analyze Screenshots
+          </Button>
+        </div>
+      )}
+
       {/* Instructions */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h4 className="font-medium text-blue-900 mb-2">Tips for best results:</h4>
@@ -359,6 +376,7 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
           <li>• Make sure all text is readable and not blurry</li>
           <li>• You can paste images from clipboard using Ctrl+V</li>
           <li>• Crop images to focus on the tables if possible</li>
+          <li>• Click "Analyze Screenshots" when both images are uploaded</li>
         </ul>
       </div>
     </div>
