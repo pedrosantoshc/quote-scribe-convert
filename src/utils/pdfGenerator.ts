@@ -2,6 +2,7 @@
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { QuoteData, FormData } from '../components/QuoteGenerator';
+import { logPDFGeneration, waitForElementRender, validateElementVisibility } from './pdfValidation';
 
 const PDF_SPECS = {
   PAGE: {
@@ -41,6 +42,8 @@ const PDF_SPECS = {
 };
 
 const validatePDFElement = (element: HTMLElement, type: 'header' | 'table' | 'footer'): boolean => {
+  logPDFGeneration(`Validating ${type} element`);
+  
   const validation = {
     isValid: true,
     errors: [] as string[]
@@ -64,6 +67,7 @@ const validatePDFElement = (element: HTMLElement, type: 'header' | 'table' | 'fo
   // Check styles
   const styles = window.getComputedStyle(element);
   
+  // Fix RGB color checking - check if color contains the RGB values instead of exact match
   if (type === 'header' && 
       !styles.backgroundColor.includes('255, 90, 113')) { // Check for Ontop pink RGB
     validation.errors.push('Invalid header background color');
@@ -79,6 +83,8 @@ const validatePDFElement = (element: HTMLElement, type: 'header' | 'table' | 'fo
   // Log any validation errors
   if (!validation.isValid) {
     console.error(`PDF ${type} validation failed:`, validation.errors);
+  } else {
+    logPDFGeneration(`${type} validation passed`);
   }
 
   return validation.isValid;
@@ -86,6 +92,8 @@ const validatePDFElement = (element: HTMLElement, type: 'header' | 'table' | 'fo
 
 export const generateQuotePDF = async (formData: FormData) => {
   try {
+    logPDFGeneration('Starting PDF generation', { formData });
+
     // Initialize PDF
     const doc = new jsPDF({
       format: 'a4',
@@ -97,6 +105,7 @@ export const generateQuotePDF = async (formData: FormData) => {
     const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString();
 
     // 1. Generate Header Banner
+    logPDFGeneration('Creating header element');
     const header = document.createElement('div');
     header.style.cssText = `
       position: absolute;
@@ -131,13 +140,31 @@ export const generateQuotePDF = async (formData: FormData) => {
     `;
 
     document.body.appendChild(header);
+    logPDFGeneration('Header appended to DOM');
+
+    // Wait for element to render
+    await waitForElementRender(header);
+    logPDFGeneration('Header render completed');
+
+    // Validate element visibility
+    if (!validateElementVisibility(header)) {
+      throw new Error('Header element is not visible after rendering');
+    }
 
     // Validate and add header
     if (validatePDFElement(header, 'header')) {
+      logPDFGeneration('Capturing header with html2canvas');
       const headerCanvas = await html2canvas(header, {
         scale: 2,
         backgroundColor: PDF_SPECS.COLORS.ONTOP_PINK,
-        logging: false
+        logging: false,
+        useCORS: true,
+        allowTaint: false
+      });
+      
+      logPDFGeneration('Header canvas captured', { 
+        width: headerCanvas.width, 
+        height: headerCanvas.height 
       });
       
       doc.addImage(
@@ -150,9 +177,13 @@ export const generateQuotePDF = async (formData: FormData) => {
       );
       
       currentY += PDF_SPECS.HEADER.HEIGHT + 20;
+      logPDFGeneration('Header added to PDF');
+    } else {
+      logPDFGeneration('Header validation failed, skipping');
     }
 
     document.body.removeChild(header);
+    logPDFGeneration('Header element removed from DOM');
 
     // 2. Format Tables
     const formatTable = (table: HTMLElement) => {
@@ -197,23 +228,31 @@ export const generateQuotePDF = async (formData: FormData) => {
     ];
 
     for (const tableSelector of tables) {
+      logPDFGeneration(`Processing table: ${tableSelector}`);
       const table = document.querySelector(tableSelector);
-      if (!table) continue;
+      if (!table) {
+        logPDFGeneration(`Table not found: ${tableSelector}`);
+        continue;
+      }
 
       const formattedTable = formatTable(table as HTMLElement);
       document.body.appendChild(formattedTable);
+      
+      await waitForElementRender(formattedTable);
       
       if (validatePDFElement(formattedTable, 'table')) {
         // Check if need new page
         if (currentY + formattedTable.offsetHeight > PDF_SPECS.PAGE.HEIGHT - PDF_SPECS.PAGE.MARGINS.BOTTOM) {
           doc.addPage();
           currentY = PDF_SPECS.PAGE.MARGINS.TOP;
+          logPDFGeneration('Added new page for table');
         }
 
         const tableCanvas = await html2canvas(formattedTable, {
           scale: 2,
           backgroundColor: null,
-          logging: false
+          logging: false,
+          useCORS: true
         });
 
         doc.addImage(
@@ -226,12 +265,14 @@ export const generateQuotePDF = async (formData: FormData) => {
         );
 
         currentY += (tableCanvas.height / 2) + 20;
+        logPDFGeneration(`Table ${tableSelector} added to PDF`);
       }
 
       document.body.removeChild(formattedTable);
     }
 
     // 4. Add Footer with Important Notes
+    logPDFGeneration('Creating footer element');
     const footer = document.createElement('div');
     footer.style.cssText = `
       margin: ${PDF_SPECS.PAGE.MARGINS.LEFT}px;
@@ -256,6 +297,7 @@ export const generateQuotePDF = async (formData: FormData) => {
     `;
 
     document.body.appendChild(footer);
+    await waitForElementRender(footer);
 
     // Validate and add footer
     if (validatePDFElement(footer, 'footer')) {
@@ -263,12 +305,14 @@ export const generateQuotePDF = async (formData: FormData) => {
       if (currentY + 200 > PDF_SPECS.PAGE.HEIGHT - PDF_SPECS.PAGE.MARGINS.BOTTOM) {
         doc.addPage();
         currentY = PDF_SPECS.PAGE.MARGINS.TOP;
+        logPDFGeneration('Added new page for footer');
       }
 
       const footerCanvas = await html2canvas(footer, {
         scale: 2,
         backgroundColor: PDF_SPECS.COLORS.BLUE_BG,
-        logging: false
+        logging: false,
+        useCORS: true
       });
 
       doc.addImage(
@@ -279,12 +323,16 @@ export const generateQuotePDF = async (formData: FormData) => {
         PDF_SPECS.PAGE.WIDTH - (PDF_SPECS.PAGE.MARGINS.LEFT + PDF_SPECS.PAGE.MARGINS.RIGHT),
         footerCanvas.height / 2
       );
+      
+      logPDFGeneration('Footer added to PDF');
     }
 
     document.body.removeChild(footer);
+    logPDFGeneration('PDF generation completed successfully');
 
     return doc;
   } catch (error) {
+    logPDFGeneration('Error generating PDF', error);
     console.error('Error generating PDF:', error);
     throw error;
   }
@@ -293,10 +341,13 @@ export const generateQuotePDF = async (formData: FormData) => {
 // Legacy function for backward compatibility
 export const generatePDF = async (element: HTMLElement, data: QuoteData, formData: FormData): Promise<void> => {
   try {
+    logPDFGeneration('Legacy generatePDF called');
     const doc = await generateQuotePDF(formData);
     const fileName = `Ontop-Quote-${formData.clientName.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(fileName);
+    logPDFGeneration('PDF saved successfully', { fileName });
   } catch (error) {
+    logPDFGeneration('Error in legacy generatePDF', error);
     console.error('Error generating PDF:', error);
     throw error;
   }
