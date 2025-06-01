@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { QuoteData, FormData } from './QuoteGenerator';
-import QuoteFooter from './QuoteFooter';
+import { QuoteFooter } from './QuoteFooter';
 
 interface QuoteLayoutProps {
   data: QuoteData;
