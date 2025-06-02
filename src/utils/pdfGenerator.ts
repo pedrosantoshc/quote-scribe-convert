@@ -2,7 +2,7 @@
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { QuoteData, FormData } from '../components/QuoteGenerator';
-import { logPDFGeneration, waitForElementRender, validateElementVisibility } from './pdfValidation';
+import { logPDFGeneration, waitForElementRender, validateElementVisibility, verifyPDFElements } from './pdfValidation';
 
 const PDF_SPECS = {
   PAGE: {
@@ -24,7 +24,8 @@ const PDF_SPECS = {
     ROW_HEIGHT: 28,
     PADDING: 8,
     FONT_SIZE: 8,
-    HEADING_HEIGHT: 35
+    HEADER_HEIGHT: 40,  // Reduced from original size
+    HEADER_FONT_SIZE: 14  // Control "Amount You Pay" text size
   },
   COLORS: {
     ONTOP_PINK: '#FF5A71',
@@ -104,13 +105,18 @@ export const generateQuotePDF = async (formData: FormData) => {
     const currentDate = new Date().toLocaleDateString();
     const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString();
 
-    // 1. Generate Header Banner
+    // 1. Generate Header Banner with proper positioning
     logPDFGeneration('Creating header element');
     const header = document.createElement('div');
+    // Add this line to ensure header has a proper container
+    header.setAttribute('class', 'ontop-header');
+    
+    // Make sure header is absolutely positioned and has proper z-index
     header.style.cssText = `
       position: absolute;
       top: 0;
       left: 0;
+      z-index: 1000;
       height: ${PDF_SPECS.HEADER.HEIGHT}px;
       width: ${PDF_SPECS.PAGE.WIDTH}px;
       background-color: ${PDF_SPECS.COLORS.ONTOP_PINK};
@@ -119,7 +125,6 @@ export const generateQuotePDF = async (formData: FormData) => {
       justify-content: space-between;
       align-items: center;
       box-sizing: border-box;
-      z-index: 1000;
     `;
     
     header.innerHTML = `
@@ -185,7 +190,7 @@ export const generateQuotePDF = async (formData: FormData) => {
     document.body.removeChild(header);
     logPDFGeneration('Header element removed from DOM');
 
-    // 2. Format Tables
+    // 2. Format Tables with fixed header sizes
     const formatTable = (table: HTMLElement) => {
       const clone = table.cloneNode(true) as HTMLElement;
       clone.style.cssText = `
@@ -207,18 +212,29 @@ export const generateQuotePDF = async (formData: FormData) => {
         `;
       });
 
+      // Fix the table header styling with specific measurements
       clone.querySelectorAll('.table-header').forEach(header => {
         (header as HTMLElement).style.cssText = `
+          height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px;
+          line-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px;
           background-color: ${PDF_SPECS.COLORS.ONTOP_PINK};
           color: white;
-          padding: ${PDF_SPECS.TABLE.PADDING}px;
-          font-size: ${PDF_SPECS.TABLE.FONT_SIZE + 1}px;
-          font-weight: 500;
+          font-size: ${PDF_SPECS.TABLE.HEADER_FONT_SIZE}px;
+          padding: 0 12px;
+          margin: 0;
         `;
       });
 
       return clone;
     };
+
+    // Use validation utilities AFTER fixing the styles
+    try {
+      await verifyPDFElements();
+    } catch (error) {
+      logPDFGeneration('PDF verification failed', error);
+      console.warn('PDF verification failed, continuing with generation');
+    }
 
     // 3. Add Tables with Proper Spacing
     const tables = [
