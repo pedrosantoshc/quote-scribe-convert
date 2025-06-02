@@ -93,6 +93,7 @@ const validatePDFElement = (element: HTMLElement, type: 'header' | 'table' | 'fo
 
 export const generateQuotePDF = async (formData: FormData) => {
   try {
+    console.log('[PDF] Starting PDF generation at:', new Date().toISOString());
     logPDFGeneration('Starting PDF generation', { formData });
 
     // Initialize PDF
@@ -102,50 +103,76 @@ export const generateQuotePDF = async (formData: FormData) => {
     });
 
     let currentY = 0;
-    const currentDate = new Date().toLocaleDateString();
-    const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString();
-
-    // 1. Generate Header Banner with proper positioning
-    logPDFGeneration('Creating header element');
-    const header = document.createElement('div');
-    // Add this line to ensure header has a proper container
-    header.setAttribute('class', 'ontop-header');
     
-    // Make sure header is absolutely positioned and has proper z-index
+    // Set current date in a consistent format
+    const currentDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    // 1. Generate Header Banner with proper positioning and logging
+    console.log('[PDF] Creating header element');
+    const header = document.createElement('div');
+    
+    // IMPORTANT: Set background color BEFORE adding class
     header.style.cssText = `
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 1000;
-      height: ${PDF_SPECS.HEADER.HEIGHT}px;
       width: ${PDF_SPECS.PAGE.WIDTH}px;
-      background-color: ${PDF_SPECS.COLORS.ONTOP_PINK};
+      height: ${PDF_SPECS.HEADER.HEIGHT}px;
+      background-color: ${PDF_SPECS.COLORS.ONTOP_PINK} !important;
       color: white;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      padding: 0 ${PDF_SPECS.PAGE.MARGINS.LEFT}px;
       box-sizing: border-box;
     `;
     
+    // Add class after setting styles
+    header.setAttribute('class', 'ontop-header');
+    console.log('[PDF] Set header styles');
+    
     header.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 16px; margin-left: ${PDF_SPECS.PAGE.MARGINS.LEFT}px">
-        <div style="width: ${PDF_SPECS.HEADER.LOGO_HEIGHT}px; height: ${PDF_SPECS.HEADER.LOGO_HEIGHT}px; background-color: white; border-radius: 4px;"></div>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <img 
+          src="/ontop-logo-white.svg"
+          alt="Ontop"
+          style="height: 30px; width: auto;"
+        />
         <div>
           <h1 style="font-size: 18px; margin: 0; font-weight: bold;">Ontop</h1>
-          <p style="font-size: ${PDF_SPECS.HEADER.TEXT_SIZE}px; margin: 0; opacity: 0.9;">
+          <p style="font-size: 14px; margin: 0; opacity: 0.9;">
             Global Employment Solutions
           </p>
         </div>
       </div>
-      <div style="text-align: right; margin-right: ${PDF_SPECS.PAGE.MARGINS.RIGHT}px; font-size: ${PDF_SPECS.HEADER.TEXT_SIZE}px;">
+      <div style="text-align: right; font-size: 12px;">
         <p style="margin: 4px 0;">Quote Sender: ${formData.aeName}</p>
         <p style="margin: 4px 0;">Client Name: ${formData.clientName}</p>
         <p style="margin: 4px 0;">Valid Until: ${validUntil}</p>
+        <p style="margin: 4px 0;">Generated: ${currentDate}</p>
       </div>
     `;
+    console.log('[PDF] Set header content');
 
     document.body.appendChild(header);
-    logPDFGeneration('Header appended to DOM');
+    console.log('[PDF] Appended header to body');
+
+    // Wait a moment for styles to apply
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Log header dimensions before capture
+    const headerRect = header.getBoundingClientRect();
+    console.log('[PDF] Header dimensions:', {
+      width: headerRect.width,
+      height: headerRect.height,
+      background: window.getComputedStyle(header).backgroundColor
+    });
 
     // Wait for element to render
     await waitForElementRender(header);
@@ -158,20 +185,19 @@ export const generateQuotePDF = async (formData: FormData) => {
 
     // Validate and add header
     if (validatePDFElement(header, 'header')) {
-      logPDFGeneration('Capturing header with html2canvas');
+      console.log('[PDF] Starting header capture');
       const headerCanvas = await html2canvas(header, {
         scale: 2,
         backgroundColor: PDF_SPECS.COLORS.ONTOP_PINK,
-        logging: false,
+        logging: true,
         useCORS: true,
-        allowTaint: false
+        allowTaint: false,
+        width: PDF_SPECS.PAGE.WIDTH,
+        height: PDF_SPECS.HEADER.HEIGHT
       });
+      console.log('[PDF] Header captured');
       
-      logPDFGeneration('Header canvas captured', { 
-        width: headerCanvas.width, 
-        height: headerCanvas.height 
-      });
-      
+      console.log('[PDF] Adding header to PDF at Y:', currentY);
       doc.addImage(
         headerCanvas, 
         'PNG', 
@@ -180,6 +206,7 @@ export const generateQuotePDF = async (formData: FormData) => {
         PDF_SPECS.PAGE.WIDTH, 
         PDF_SPECS.HEADER.HEIGHT
       );
+      console.log('[PDF] Header added to PDF');
       
       currentY += PDF_SPECS.HEADER.HEIGHT + 20;
       logPDFGeneration('Header added to PDF');
@@ -188,7 +215,7 @@ export const generateQuotePDF = async (formData: FormData) => {
     }
 
     document.body.removeChild(header);
-    logPDFGeneration('Header element removed from DOM');
+    console.log('[PDF] Header element removed');
 
     // 2. Format Tables with fixed header sizes
     const formatTable = (table: HTMLElement) => {
