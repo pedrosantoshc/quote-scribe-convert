@@ -4,10 +4,10 @@ import jsPDF from 'jspdf';
 import { QuoteData, FormData } from '../components/QuoteGenerator';
 import { logPDFGeneration, waitForElementRender, validateElementVisibility, verifyPDFElements } from './pdfValidation';
 
-// Updated PDF_SPECS to use integer values
+// Updated PDF_SPECS with exact minimalist measurements
 const PDF_SPECS = {
   PAGE: {
-    WIDTH: 595,  // Remove decimal points
+    WIDTH: 595,
     HEIGHT: 841,
     MARGINS: {
       TOP: 40,
@@ -17,16 +17,16 @@ const PDF_SPECS = {
     }
   },
   HEADER: {
-    HEIGHT: 80,
-    LOGO_HEIGHT: 30,
-    TEXT_SIZE: 10
+    HEIGHT: 50,
+    LOGO_HEIGHT: 20,
+    FONT_SIZE: 9
   },
   TABLE: {
-    ROW_HEIGHT: 28,
+    ROW_HEIGHT: 26,
     PADDING: 8,
     FONT_SIZE: 8,
-    HEADER_HEIGHT: 40,  // Reduced size for table headers
-    HEADER_FONT_SIZE: 14  // Smaller font for headers
+    HEADER_HEIGHT: 28,
+    HEADER_FONT_SIZE: 11
   },
   COLORS: {
     ONTOP_PINK: '#FF5A71',
@@ -39,7 +39,7 @@ const PDF_SPECS = {
     MIN_HEIGHT: 35,
     MAX_HEIGHT: 1000,
     MIN_WIDTH: 400,
-    MAX_WIDTH: 595  // Updated to match integer width
+    MAX_WIDTH: 595
   }
 };
 
@@ -94,12 +94,12 @@ export const generateQuotePDF = async (formData: FormData) => {
     console.log('[PDF] Starting PDF generation at:', new Date().toISOString());
     logPDFGeneration('Starting PDF generation', { formData });
 
-    // Create header with NUMERIC width (no px suffix)
+    // Create header with minimalist design
     const header = document.createElement('div');
     console.log('[PDF] Created header element');
 
-    // IMPORTANT: Remove all 'px' units from numeric values
-    const headerWidth = Math.floor(PDF_SPECS.PAGE.WIDTH); // Round down to remove decimals
+    // Use exact minimalist measurements
+    const headerWidth = Math.floor(PDF_SPECS.PAGE.WIDTH);
     const headerHeight = Math.floor(PDF_SPECS.HEADER.HEIGHT);
     
     header.style.cssText = `
@@ -118,7 +118,7 @@ export const generateQuotePDF = async (formData: FormData) => {
     header.setAttribute('class', 'ontop-header');
     console.log('[PDF] Set header styles');
 
-    // Set current date in a consistent format
+    // Set current date in consistent format
     const currentDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -130,25 +130,28 @@ export const generateQuotePDF = async (formData: FormData) => {
       day: 'numeric'
     });
 
+    // Updated header HTML with minimalist design
     header.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 16px;">
+      <div style="height: ${headerHeight}px; display: flex; align-items: center;">
         <img 
           src="/ontop-logo-white.svg"
           alt="Ontop"
-          style="height: 30px; width: auto;"
+          style="height: ${PDF_SPECS.HEADER.LOGO_HEIGHT}px; width: auto;"
         />
-        <div>
-          <h1 style="font-size: 18px; margin: 0; font-weight: bold;">Ontop</h1>
-          <p style="font-size: 14px; margin: 0; opacity: 0.9;">
-            Global Employment Solutions
-          </p>
-        </div>
       </div>
-      <div style="text-align: right; font-size: 12px;">
-        <p style="margin: 4px 0;">Quote Sender: ${formData.aeName}</p>
-        <p style="margin: 4px 0;">Client Name: ${formData.clientName}</p>
-        <p style="margin: 4px 0;">Valid Until: ${validUntil}</p>
-        <p style="margin: 4px 0;">Generated: ${currentDate}</p>
+      <div style="text-align: right">
+        <p style="margin: 2px 0; font-size: ${PDF_SPECS.HEADER.FONT_SIZE}px; line-height: 1.2;">
+          Quote Sender: ${formData.aeName}
+        </p>
+        <p style="margin: 2px 0; font-size: ${PDF_SPECS.HEADER.FONT_SIZE}px; line-height: 1.2;">
+          Client Name: ${formData.clientName}
+        </p>
+        <p style="margin: 2px 0; font-size: ${PDF_SPECS.HEADER.FONT_SIZE}px; line-height: 1.2;">
+          Valid Until: ${validUntil}
+        </p>
+        <p style="margin: 2px 0; font-size: ${PDF_SPECS.HEADER.FONT_SIZE}px; line-height: 1.2;">
+          Generated: ${currentDate}
+        </p>
       </div>
     `;
     
@@ -196,7 +199,7 @@ export const generateQuotePDF = async (formData: FormData) => {
         scale: 2,
         backgroundColor: PDF_SPECS.COLORS.ONTOP_PINK,
         logging: true,
-        width: headerWidth,  // Use numeric values without 'px'
+        width: headerWidth,
         height: headerHeight,
         useCORS: true,
         allowTaint: false,
@@ -231,7 +234,7 @@ export const generateQuotePDF = async (formData: FormData) => {
     document.body.removeChild(container);
     console.log('[PDF] Header element removed');
 
-    // Format Tables with fixed header sizes
+    // Format Tables with compact minimalist styles
     const formatTable = (table: HTMLElement) => {
       const clone = table.cloneNode(true) as HTMLElement;
       clone.style.cssText = `
@@ -253,16 +256,17 @@ export const generateQuotePDF = async (formData: FormData) => {
         `;
       });
 
-      // Fix the table header styling with specific measurements
+      // Apply exact minimalist table header styles
       clone.querySelectorAll('.table-header').forEach(header => {
         (header as HTMLElement).style.cssText = `
-          height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px;
-          line-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px;
+          height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
+          line-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
           background-color: ${PDF_SPECS.COLORS.ONTOP_PINK};
           color: white;
           font-size: ${PDF_SPECS.TABLE.HEADER_FONT_SIZE}px;
-          padding: 0 12px;
+          padding: ${PDF_SPECS.TABLE.PADDING}px;
           margin: 0;
+          box-sizing: border-box;
         `;
       });
 
