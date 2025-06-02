@@ -4,10 +4,11 @@ import jsPDF from 'jspdf';
 import { QuoteData, FormData } from '../components/QuoteGenerator';
 import { logPDFGeneration, waitForElementRender, validateElementVisibility, verifyPDFElements } from './pdfValidation';
 
+// Updated PDF_SPECS to use integer values
 const PDF_SPECS = {
   PAGE: {
-    WIDTH: 595.28,  // A4 width in points
-    HEIGHT: 841.89, // A4 height in points
+    WIDTH: 595,  // Remove decimal points
+    HEIGHT: 841,
     MARGINS: {
       TOP: 40,
       BOTTOM: 40,
@@ -17,15 +18,15 @@ const PDF_SPECS = {
   },
   HEADER: {
     HEIGHT: 80,
-    LOGO_HEIGHT: 32,
+    LOGO_HEIGHT: 30,
     TEXT_SIZE: 10
   },
   TABLE: {
     ROW_HEIGHT: 28,
     PADDING: 8,
     FONT_SIZE: 8,
-    HEADER_HEIGHT: 40,  // Reduced from original size
-    HEADER_FONT_SIZE: 14  // Control "Amount You Pay" text size
+    HEADER_HEIGHT: 40,  // Reduced size for table headers
+    HEADER_FONT_SIZE: 14  // Smaller font for headers
   },
   COLORS: {
     ONTOP_PINK: '#FF5A71',
@@ -35,10 +36,10 @@ const PDF_SPECS = {
     TEXT_LIGHT: '#4A5568'
   },
   VALIDATION: {
-    MIN_HEIGHT: 35,    // Minimum row height
-    MAX_HEIGHT: 1000,  // Maximum section height
-    MIN_WIDTH: 400,    // Minimum content width
-    MAX_WIDTH: 595     // Maximum content width (A4)
+    MIN_HEIGHT: 35,
+    MAX_HEIGHT: 1000,
+    MIN_WIDTH: 400,
+    MAX_WIDTH: 595  // Updated to match integer width
   }
 };
 
@@ -50,11 +51,11 @@ const validatePDFElement = (element: HTMLElement, type: 'header' | 'table' | 'fo
     errors: [] as string[]
   };
 
-  // Check dimensions
   const rect = element.getBoundingClientRect();
   
+  // Use more lenient validation for width to account for browser differences
   if (rect.width < PDF_SPECS.VALIDATION.MIN_WIDTH || 
-      rect.width > PDF_SPECS.VALIDATION.MAX_WIDTH) {
+      rect.width > PDF_SPECS.VALIDATION.MAX_WIDTH + 10) { // Add small tolerance
     validation.errors.push(`Invalid width: ${rect.width}px`);
     validation.isValid = false;
   }
@@ -65,23 +66,20 @@ const validatePDFElement = (element: HTMLElement, type: 'header' | 'table' | 'fo
     validation.isValid = false;
   }
 
-  // Check styles
   const styles = window.getComputedStyle(element);
   
-  // Fix RGB color checking - check if color contains the RGB values instead of exact match
   if (type === 'header' && 
-      !styles.backgroundColor.includes('255, 90, 113')) { // Check for Ontop pink RGB
+      !styles.backgroundColor.includes('255, 90, 113')) {
     validation.errors.push('Invalid header background color');
     validation.isValid = false;
   }
 
   if (type === 'footer' && 
-      !styles.backgroundColor.includes('235, 245, 255')) { // Check for blue background RGB
+      !styles.backgroundColor.includes('235, 245, 255')) {
     validation.errors.push('Invalid footer background color');
     validation.isValid = false;
   }
 
-  // Log any validation errors
   if (!validation.isValid) {
     console.error(`PDF ${type} validation failed:`, validation.errors);
   } else {
@@ -96,14 +94,30 @@ export const generateQuotePDF = async (formData: FormData) => {
     console.log('[PDF] Starting PDF generation at:', new Date().toISOString());
     logPDFGeneration('Starting PDF generation', { formData });
 
-    // Initialize PDF
-    const doc = new jsPDF({
-      format: 'a4',
-      unit: 'pt'
-    });
+    // Create header with NUMERIC width (no px suffix)
+    const header = document.createElement('div');
+    console.log('[PDF] Created header element');
 
-    let currentY = 0;
+    // IMPORTANT: Remove all 'px' units from numeric values
+    const headerWidth = Math.floor(PDF_SPECS.PAGE.WIDTH); // Round down to remove decimals
+    const headerHeight = Math.floor(PDF_SPECS.HEADER.HEIGHT);
     
+    header.style.cssText = `
+      width: ${headerWidth}px;
+      height: ${headerHeight}px;
+      background-color: ${PDF_SPECS.COLORS.ONTOP_PINK} !important;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 ${PDF_SPECS.PAGE.MARGINS.LEFT}px;
+      position: relative;
+      box-sizing: border-box;
+    `;
+    
+    header.setAttribute('class', 'ontop-header');
+    console.log('[PDF] Set header styles');
+
     // Set current date in a consistent format
     const currentDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric',
@@ -116,27 +130,6 @@ export const generateQuotePDF = async (formData: FormData) => {
       day: 'numeric'
     });
 
-    // 1. Generate Header Banner with proper positioning and logging
-    console.log('[PDF] Creating header element');
-    const header = document.createElement('div');
-    
-    // IMPORTANT: Set background color BEFORE adding class
-    header.style.cssText = `
-      width: ${PDF_SPECS.PAGE.WIDTH}px;
-      height: ${PDF_SPECS.HEADER.HEIGHT}px;
-      background-color: ${PDF_SPECS.COLORS.ONTOP_PINK} !important;
-      color: white;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0 ${PDF_SPECS.PAGE.MARGINS.LEFT}px;
-      box-sizing: border-box;
-    `;
-    
-    // Add class after setting styles
-    header.setAttribute('class', 'ontop-header');
-    console.log('[PDF] Set header styles');
-    
     header.innerHTML = `
       <div style="display: flex; align-items: center; gap: 16px;">
         <img 
@@ -158,24 +151,27 @@ export const generateQuotePDF = async (formData: FormData) => {
         <p style="margin: 4px 0;">Generated: ${currentDate}</p>
       </div>
     `;
-    console.log('[PDF] Set header content');
-
-    document.body.appendChild(header);
-    console.log('[PDF] Appended header to body');
-
-    // Wait a moment for styles to apply
-    await new Promise(resolve => setTimeout(resolve, 100));
     
-    // Log header dimensions before capture
-    const headerRect = header.getBoundingClientRect();
-    console.log('[PDF] Header dimensions:', {
-      width: headerRect.width,
-      height: headerRect.height,
-      background: window.getComputedStyle(header).backgroundColor
+    // Create container for header with explicit dimensions
+    const container = document.createElement('div');
+    container.style.cssText = `
+      width: ${headerWidth}px;
+      height: ${headerHeight}px;
+      position: relative;
+      overflow: hidden;
+    `;
+    container.appendChild(header);
+    document.body.appendChild(container);
+    
+    console.log('[PDF] Header dimensions before capture:', {
+      width: headerWidth,
+      height: headerHeight,
+      containerWidth: container.offsetWidth,
+      containerHeight: container.offsetHeight
     });
 
     // Wait for element to render
-    await waitForElementRender(header);
+    await waitForElementRender(container);
     logPDFGeneration('Header render completed');
 
     // Validate element visibility
@@ -183,41 +179,59 @@ export const generateQuotePDF = async (formData: FormData) => {
       throw new Error('Header element is not visible after rendering');
     }
 
-    // Validate and add header
+    // Initialize PDF with exact dimensions
+    const doc = new jsPDF({
+      format: 'a4',
+      unit: 'pt'
+    });
+
+    let currentY = 0;
+
+    // Validate and capture header
     if (validatePDFElement(header, 'header')) {
       console.log('[PDF] Starting header capture');
-      const headerCanvas = await html2canvas(header, {
+      
+      // Capture header with explicit numeric dimensions
+      const headerCanvas = await html2canvas(container, {
         scale: 2,
         backgroundColor: PDF_SPECS.COLORS.ONTOP_PINK,
         logging: true,
+        width: headerWidth,  // Use numeric values without 'px'
+        height: headerHeight,
         useCORS: true,
         allowTaint: false,
-        width: PDF_SPECS.PAGE.WIDTH,
-        height: PDF_SPECS.HEADER.HEIGHT
+        onclone: (clonedDoc) => {
+          const clonedHeader = clonedDoc.querySelector('.ontop-header');
+          if (clonedHeader) {
+            console.log('[PDF] Cloned header found and styled');
+          }
+        }
       });
       console.log('[PDF] Header captured');
       
+      // Add header image with numeric dimensions
       console.log('[PDF] Adding header to PDF at Y:', currentY);
       doc.addImage(
-        headerCanvas, 
-        'PNG', 
-        0, 
-        currentY, 
-        PDF_SPECS.PAGE.WIDTH, 
-        PDF_SPECS.HEADER.HEIGHT
+        headerCanvas,
+        'PNG',
+        0,
+        currentY,
+        headerWidth,
+        headerHeight
       );
       console.log('[PDF] Header added to PDF');
       
-      currentY += PDF_SPECS.HEADER.HEIGHT + 20;
+      currentY += headerHeight + 20;
       logPDFGeneration('Header added to PDF');
     } else {
       logPDFGeneration('Header validation failed, skipping');
     }
 
-    document.body.removeChild(header);
+    // Clean up
+    document.body.removeChild(container);
     console.log('[PDF] Header element removed');
 
-    // 2. Format Tables with fixed header sizes
+    // Format Tables with fixed header sizes
     const formatTable = (table: HTMLElement) => {
       const clone = table.cloneNode(true) as HTMLElement;
       clone.style.cssText = `
@@ -263,7 +277,7 @@ export const generateQuotePDF = async (formData: FormData) => {
       console.warn('PDF verification failed, continuing with generation');
     }
 
-    // 3. Add Tables with Proper Spacing
+    // Add Tables with Proper Spacing
     const tables = [
       '.amount-you-pay',
       '.amount-employee-gets',
@@ -314,7 +328,7 @@ export const generateQuotePDF = async (formData: FormData) => {
       document.body.removeChild(formattedTable);
     }
 
-    // 4. Add Footer with Important Notes
+    // Add Footer with Important Notes
     logPDFGeneration('Creating footer element');
     const footer = document.createElement('div');
     footer.style.cssText = `
