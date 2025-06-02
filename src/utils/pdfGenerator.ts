@@ -1,10 +1,9 @@
-
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { QuoteData, FormData } from '../components/QuoteGenerator';
 import { logPDFGeneration, waitForElementRender, validateElementVisibility, verifyPDFElements } from './pdfValidation';
 
-// Updated PDF_SPECS with exact minimalist measurements
+// Updated PDF_SPECS with exact measurements to fix header cutting and table proportions
 const PDF_SPECS = {
   PAGE: {
     WIDTH: 595,
@@ -17,15 +16,15 @@ const PDF_SPECS = {
     }
   },
   HEADER: {
-    HEIGHT: 50,
-    LOGO_HEIGHT: 20,
-    FONT_SIZE: 9
+    HEIGHT: 80,  // Increased to 80px to prevent cutting
+    LOGO_HEIGHT: 20,  // Perfect logo size
+    FONT_SIZE: 8   // Reduced to 8px
   },
   TABLE: {
     ROW_HEIGHT: 26,
-    PADDING: 8,
+    PADDING: 6,  // Reduced padding to match new header height
     FONT_SIZE: 8,
-    HEADER_HEIGHT: 28,
+    HEADER_HEIGHT: 18,  // Significantly reduced from 28px to 18px
     HEADER_FONT_SIZE: 11
   },
   COLORS: {
@@ -94,13 +93,13 @@ export const generateQuotePDF = async (formData: FormData) => {
     console.log('[PDF] Starting PDF generation at:', new Date().toISOString());
     logPDFGeneration('Starting PDF generation', { formData });
 
-    // Create header with minimalist design
+    // Create header with proper dimensions to prevent cutting
     const header = document.createElement('div');
     console.log('[PDF] Created header element');
 
-    // Use exact minimalist measurements
+    // Use exact measurements with proper height to prevent cutting
     const headerWidth = Math.floor(PDF_SPECS.PAGE.WIDTH);
-    const headerHeight = Math.floor(PDF_SPECS.HEADER.HEIGHT);
+    const headerHeight = Math.floor(PDF_SPECS.HEADER.HEIGHT);  // Now 80px
     
     header.style.cssText = `
       width: ${headerWidth}px;
@@ -118,7 +117,7 @@ export const generateQuotePDF = async (formData: FormData) => {
     header.setAttribute('class', 'ontop-header');
     console.log('[PDF] Set header styles');
 
-    // Set current date in consistent format
+    // Set current date and valid until date
     const currentDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -130,7 +129,7 @@ export const generateQuotePDF = async (formData: FormData) => {
       day: 'numeric'
     });
 
-    // Updated header HTML with minimalist design
+    // Updated header HTML with only requested information and proper sizing
     header.innerHTML = `
       <div style="height: ${headerHeight}px; display: flex; align-items: center;">
         <img 
@@ -149,13 +148,10 @@ export const generateQuotePDF = async (formData: FormData) => {
         <p style="margin: 2px 0; font-size: ${PDF_SPECS.HEADER.FONT_SIZE}px; line-height: 1.2;">
           Valid Until: ${validUntil}
         </p>
-        <p style="margin: 2px 0; font-size: ${PDF_SPECS.HEADER.FONT_SIZE}px; line-height: 1.2;">
-          Generated: ${currentDate}
-        </p>
       </div>
     `;
     
-    // Create container for header with explicit dimensions
+    // Create container for header with exact dimensions
     const container = document.createElement('div');
     container.style.cssText = `
       width: ${headerWidth}px;
@@ -234,7 +230,7 @@ export const generateQuotePDF = async (formData: FormData) => {
     document.body.removeChild(container);
     console.log('[PDF] Header element removed');
 
-    // Format Tables with compact minimalist styles
+    // Format Tables with compact styles and proper proportional headers
     const formatTable = (table: HTMLElement) => {
       const clone = table.cloneNode(true) as HTMLElement;
       clone.style.cssText = `
@@ -256,7 +252,7 @@ export const generateQuotePDF = async (formData: FormData) => {
         `;
       });
 
-      // Apply exact minimalist table header styles
+      // Apply exact table header styles with proper proportions (18px height)
       clone.querySelectorAll('.table-header').forEach(header => {
         (header as HTMLElement).style.cssText = `
           height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
