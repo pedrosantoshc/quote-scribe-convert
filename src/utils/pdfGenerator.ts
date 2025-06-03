@@ -129,14 +129,23 @@ export const generateQuotePDF = async (formData: FormData) => {
       day: 'numeric'
     });
 
-    // Updated header HTML with only requested information and proper sizing
+    // Updated header HTML with logo wrapper to prevent cutting
     header.innerHTML = `
-      <div style="height: ${headerHeight}px; display: flex; align-items: center;">
-        <img 
-          src="/ontop-logo-white.svg"
-          alt="Ontop"
-          style="height: ${PDF_SPECS.HEADER.LOGO_HEIGHT}px; width: auto;"
-        />
+      <div style="height: ${headerHeight}px; display: flex; align-items: center; padding: 10px 0;">
+        <div style="
+          width: ${PDF_SPECS.HEADER.LOGO_HEIGHT + 10}px; 
+          height: ${PDF_SPECS.HEADER.LOGO_HEIGHT + 10}px; 
+          display: flex; 
+          align-items: center; 
+          justify-content: center;
+          padding: 5px;
+        ">
+          <img 
+            src="/ontop-logo-white.svg"
+            alt="Ontop"
+            style="height: ${PDF_SPECS.HEADER.LOGO_HEIGHT}px; width: auto; display: block;"
+          />
+        </div>
       </div>
       <div style="text-align: right">
         <p style="margin: 2px 0; font-size: ${PDF_SPECS.HEADER.FONT_SIZE}px; line-height: 1.2;">
@@ -230,7 +239,7 @@ export const generateQuotePDF = async (formData: FormData) => {
     document.body.removeChild(container);
     console.log('[PDF] Header element removed');
 
-    // Format Tables with compact styles and proper proportional headers
+    // Format Tables with compact styles and proper table header targeting
     const formatTable = (table: HTMLElement) => {
       const clone = table.cloneNode(true) as HTMLElement;
       clone.style.cssText = `
@@ -252,17 +261,35 @@ export const generateQuotePDF = async (formData: FormData) => {
         `;
       });
 
-      // Apply exact table header styles with proper proportions (18px height)
-      clone.querySelectorAll('.table-header').forEach(header => {
+      // Target actual table headers more specifically - use both class and element selectors
+      clone.querySelectorAll('th, .table-header, [class*="bg-"][class*="FF5A71"]').forEach(header => {
         (header as HTMLElement).style.cssText = `
           height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
           line-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
-          background-color: ${PDF_SPECS.COLORS.ONTOP_PINK};
-          color: white;
-          font-size: ${PDF_SPECS.TABLE.HEADER_FONT_SIZE}px;
-          padding: ${PDF_SPECS.TABLE.PADDING}px;
-          margin: 0;
-          box-sizing: border-box;
+          background-color: ${PDF_SPECS.COLORS.ONTOP_PINK} !important;
+          color: white !important;
+          font-size: ${PDF_SPECS.TABLE.HEADER_FONT_SIZE}px !important;
+          padding: ${PDF_SPECS.TABLE.PADDING}px !important;
+          margin: 0 !important;
+          box-sizing: border-box !important;
+          min-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
+          max-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
+        `;
+      });
+
+      // Also target CardHeader elements specifically
+      clone.querySelectorAll('[class*="CardHeader"], [role="heading"]').forEach(header => {
+        (header as HTMLElement).style.cssText = `
+          height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
+          line-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
+          background-color: ${PDF_SPECS.COLORS.ONTOP_PINK} !important;
+          color: white !important;
+          font-size: ${PDF_SPECS.TABLE.HEADER_FONT_SIZE}px !important;
+          padding: ${PDF_SPECS.TABLE.PADDING}px !important;
+          margin: 0 !important;
+          box-sizing: border-box !important;
+          min-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
+          max-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
         `;
       });
 
