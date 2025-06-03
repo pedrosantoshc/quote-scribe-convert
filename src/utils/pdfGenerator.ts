@@ -129,7 +129,7 @@ export const generateQuotePDF = async (formData: FormData) => {
       day: 'numeric'
     });
 
-    // Simple text logo as requested
+    // Fixed logo with proper spacing
     header.innerHTML = `
       <div style="height: ${headerHeight}px; display: flex; align-items: center; padding: 10px 0;">
         <div style="
@@ -144,7 +144,7 @@ export const generateQuotePDF = async (formData: FormData) => {
             font-weight: bold;
             color: white;
             line-height: 1;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
           ">Ontop</div>
           <div style="
             font-family: Arial, sans-serif;
@@ -246,7 +246,7 @@ export const generateQuotePDF = async (formData: FormData) => {
     document.body.removeChild(container);
     console.log('[PDF] Header element removed');
 
-    // Format Tables with proper targeting and CardHeader height control
+    // Format Tables with aggressive CardHeader targeting
     const formatTable = (table: HTMLElement) => {
       const clone = table.cloneNode(true) as HTMLElement;
       clone.style.cssText = `
@@ -284,24 +284,41 @@ export const generateQuotePDF = async (formData: FormData) => {
         `;
       });
 
-      // Target CardHeader elements specifically (the table titles like "Amount You Pay")
-      clone.querySelectorAll('[class*="CardHeader"], .card-header, h3, h2').forEach(cardHeader => {
-        if (cardHeader.textContent?.includes('Amount You Pay') || 
-            cardHeader.textContent?.includes('Amount Employee Gets') || 
-            cardHeader.textContent?.includes('Setup Summary')) {
-          (cardHeader as HTMLElement).style.cssText = `
+      // AGGRESSIVE CardHeader targeting - reset ALL inherited styles
+      clone.querySelectorAll('*').forEach(element => {
+        const el = element as HTMLElement;
+        const computedStyle = window.getComputedStyle(el);
+        
+        // Check if this is a CardHeader by looking at its content and classes
+        if ((el.textContent?.includes('Amount You Pay') || 
+             el.textContent?.includes('Amount Employee Gets') || 
+             el.textContent?.includes('Setup Summary')) &&
+            (el.classList.contains('CardHeader') || 
+             el.tagName === 'H1' || el.tagName === 'H2' || el.tagName === 'H3' ||
+             computedStyle.backgroundColor.includes('255, 90, 113'))) {
+          
+          // Nuclear option - completely override everything
+          el.style.cssText = `
+            all: unset !important;
             height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
+            min-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
+            max-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
             line-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
             background-color: ${PDF_SPECS.COLORS.ONTOP_PINK} !important;
             color: white !important;
             font-size: ${PDF_SPECS.TABLE.HEADER_FONT_SIZE}px !important;
-            padding: ${PDF_SPECS.TABLE.PADDING}px !important;
+            font-family: Arial, sans-serif !important;
+            font-weight: 600 !important;
+            padding: 0 ${PDF_SPECS.TABLE.PADDING}px !important;
             margin: 0 !important;
             box-sizing: border-box !important;
-            min-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
-            max-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
             display: flex !important;
             align-items: center !important;
+            justify-content: flex-start !important;
+            width: 100% !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
           `;
         }
       });
