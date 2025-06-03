@@ -106,10 +106,6 @@ export const generateQuotePDF = async (formData: FormData) => {
       height: ${headerHeight}px;
       background-color: ${PDF_SPECS.COLORS.ONTOP_PINK} !important;
       color: white;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0 ${PDF_SPECS.PAGE.MARGINS.LEFT}px;
       position: relative;
       box-sizing: border-box;
     `;
@@ -129,41 +125,38 @@ export const generateQuotePDF = async (formData: FormData) => {
       day: 'numeric'
     });
 
-    // Fixed logo with proper spacing
+    // Proper flexbox header with systematic spacing
     header.innerHTML = `
-      <div style="height: ${headerHeight}px; display: flex; align-items: center; padding: 10px 0;">
-        <div style="
-          display: flex; 
-          flex-direction: column;
-          justify-content: center;
-          padding: 5px;
-        ">
-          <div style="
-            font-family: Arial, sans-serif;
-            font-size: ${PDF_SPECS.HEADER.LOGO_HEIGHT}px;
-            font-weight: bold;
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%; padding: 16px ${PDF_SPECS.PAGE.MARGINS.LEFT}px;">
+        <div style="display: flex; flex-direction: column;">
+          <h1 style="
+            font-size: 24px;
+            font-weight: 600;
             color: white;
+            margin: 0;
             line-height: 1;
-            margin-bottom: 4px;
-          ">Ontop</div>
-          <div style="
             font-family: Arial, sans-serif;
-            font-size: ${PDF_SPECS.HEADER.FONT_SIZE}px;
+          ">Ontop</h1>
+          <p style="
+            font-size: 12px;
             color: white;
+            margin: 8px 0 0;
             line-height: 1;
-          ">Simple, Powerful, Global.</div>
+            font-family: Arial, sans-serif;
+          ">Simple, Powerful, Global.</p>
         </div>
-      </div>
-      <div style="text-align: right">
-        <p style="margin: 2px 0; font-size: ${PDF_SPECS.HEADER.FONT_SIZE}px; line-height: 1.2;">
-          Quote Sender: ${formData.aeName}
-        </p>
-        <p style="margin: 2px 0; font-size: ${PDF_SPECS.HEADER.FONT_SIZE}px; line-height: 1.2;">
-          Client Name: ${formData.clientName}
-        </p>
-        <p style="margin: 2px 0; font-size: ${PDF_SPECS.HEADER.FONT_SIZE}px; line-height: 1.2;">
-          Valid Until: ${validUntil}
-        </p>
+        
+        <div style="text-align: right;">
+          <p style="margin: 0 0 4px; font-size: ${PDF_SPECS.HEADER.FONT_SIZE}px; line-height: 1.2; color: white; font-family: Arial, sans-serif;">
+            Quote Sender: ${formData.aeName}
+          </p>
+          <p style="margin: 0 0 4px; font-size: ${PDF_SPECS.HEADER.FONT_SIZE}px; line-height: 1.2; color: white; font-family: Arial, sans-serif;">
+            Client Name: ${formData.clientName}
+          </p>
+          <p style="margin: 0; font-size: ${PDF_SPECS.HEADER.FONT_SIZE}px; line-height: 1.2; color: white; font-family: Arial, sans-serif;">
+            Valid Until: ${validUntil}
+          </p>
+        </div>
       </div>
     `;
     
@@ -246,7 +239,7 @@ export const generateQuotePDF = async (formData: FormData) => {
     document.body.removeChild(container);
     console.log('[PDF] Header element removed');
 
-    // Format Tables with aggressive CardHeader targeting
+    // Systematic approach to table formatting - reset component tree first
     const formatTable = (table: HTMLElement) => {
       const clone = table.cloneNode(true) as HTMLElement;
       clone.style.cssText = `
@@ -255,8 +248,86 @@ export const generateQuotePDF = async (formData: FormData) => {
         border-collapse: collapse;
       `;
       
+      // Step 1: Find all card containers and headers - target the entire component tree
+      const cardContainers = clone.querySelectorAll('[role="region"]');
+      cardContainers.forEach(card => {
+        // Reset container styles
+        (card as HTMLElement).style.cssText = `
+          margin: 0 !important;
+          padding: 0 !important;
+          border-radius: 8px;
+          overflow: hidden;
+        `;
+        
+        // Find the header within this card
+        const header = card.querySelector('[role="heading"]');
+        if (header && header instanceof HTMLElement) {
+          // THIS is the key - we reset ALL inherited styles first
+          header.style.all = 'unset';
+          
+          // Then apply our exact styles
+          header.style.cssText = `
+            height: 18px !important;
+            min-height: 18px !important;
+            max-height: 18px !important;
+            line-height: 18px !important;
+            padding: 0 12px !important;
+            margin: 0 !important;
+            background-color: #FF5A71;
+            color: white;
+            font-size: 11px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            box-sizing: border-box;
+          `;
+        }
+      });
+
+      // Also target by common card header patterns as fallback
+      clone.querySelectorAll('*').forEach(element => {
+        const el = element as HTMLElement;
+        
+        // Check if this is a CardHeader by content and styling
+        if ((el.textContent?.includes('Amount You Pay') || 
+             el.textContent?.includes('Amount Employee Gets') || 
+             el.textContent?.includes('Setup Summary')) &&
+            (el.classList.contains('CardHeader') || 
+             el.tagName === 'H1' || el.tagName === 'H2' || el.tagName === 'H3')) {
+          
+          // Reset ALL inherited styles first
+          el.style.all = 'unset';
+          
+          // Then apply our exact styles
+          el.style.cssText = `
+            height: 18px !important;
+            min-height: 18px !important;
+            max-height: 18px !important;
+            line-height: 18px !important;
+            padding: 0 12px !important;
+            margin: 0 !important;
+            background-color: #FF5A71;
+            color: white;
+            font-size: 11px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            box-sizing: border-box;
+            width: 100%;
+          `;
+        }
+      });
+
+      // Keep existing table row styling
       clone.querySelectorAll('tr').forEach(row => {
-        (row as HTMLElement).style.height = `${PDF_SPECS.TABLE.ROW_HEIGHT}px`;
+        if (row.classList.contains('subtotal-row')) {
+          // Preserve pink background for subtotal rows
+          (row as HTMLElement).style.backgroundColor = '#FFF1F3';
+        } else {
+          (row as HTMLElement).style.height = `${PDF_SPECS.TABLE.ROW_HEIGHT}px`;
+        }
       });
 
       clone.querySelectorAll('td, th').forEach(cell => {
@@ -267,63 +338,6 @@ export const generateQuotePDF = async (formData: FormData) => {
           ${cell.classList.contains('text-right') ? 'text-align: right;' : ''}
         `;
       });
-
-      // Target actual table headers (th elements inside thead)
-      clone.querySelectorAll('thead th').forEach(header => {
-        (header as HTMLElement).style.cssText = `
-          height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
-          line-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
-          background-color: ${PDF_SPECS.COLORS.ONTOP_PINK} !important;
-          color: white !important;
-          font-size: ${PDF_SPECS.TABLE.HEADER_FONT_SIZE}px !important;
-          padding: ${PDF_SPECS.TABLE.PADDING}px !important;
-          margin: 0 !important;
-          box-sizing: border-box !important;
-          min-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
-          max-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
-        `;
-      });
-
-      // AGGRESSIVE CardHeader targeting - reset ALL inherited styles
-      clone.querySelectorAll('*').forEach(element => {
-        const el = element as HTMLElement;
-        const computedStyle = window.getComputedStyle(el);
-        
-        // Check if this is a CardHeader by looking at its content and classes
-        if ((el.textContent?.includes('Amount You Pay') || 
-             el.textContent?.includes('Amount Employee Gets') || 
-             el.textContent?.includes('Setup Summary')) &&
-            (el.classList.contains('CardHeader') || 
-             el.tagName === 'H1' || el.tagName === 'H2' || el.tagName === 'H3' ||
-             computedStyle.backgroundColor.includes('255, 90, 113'))) {
-          
-          // Nuclear option - completely override everything
-          el.style.cssText = `
-            all: unset !important;
-            height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
-            min-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
-            max-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
-            line-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
-            background-color: ${PDF_SPECS.COLORS.ONTOP_PINK} !important;
-            color: white !important;
-            font-size: ${PDF_SPECS.TABLE.HEADER_FONT_SIZE}px !important;
-            font-family: Arial, sans-serif !important;
-            font-weight: 600 !important;
-            padding: 0 ${PDF_SPECS.TABLE.PADDING}px !important;
-            margin: 0 !important;
-            box-sizing: border-box !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: flex-start !important;
-            width: 100% !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            white-space: nowrap !important;
-          `;
-        }
-      });
-
-      // The subtotal rows will keep their existing pink styling from the original CSS
 
       return clone;
     };
