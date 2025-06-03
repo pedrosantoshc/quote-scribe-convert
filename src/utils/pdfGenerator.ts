@@ -129,32 +129,29 @@ export const generateQuotePDF = async (formData: FormData) => {
       day: 'numeric'
     });
 
-    // Create logo using CSS instead of SVG to avoid rendering issues
+    // Simple text logo as requested
     header.innerHTML = `
       <div style="height: ${headerHeight}px; display: flex; align-items: center; padding: 10px 0;">
         <div style="
-          width: ${PDF_SPECS.HEADER.LOGO_HEIGHT + 10}px; 
-          height: ${PDF_SPECS.HEADER.LOGO_HEIGHT + 10}px; 
           display: flex; 
-          align-items: center; 
+          flex-direction: column;
           justify-content: center;
           padding: 5px;
         ">
           <div style="
-            width: 0;
-            height: 0;
-            border-left: ${PDF_SPECS.HEADER.LOGO_HEIGHT/2}px solid transparent;
-            border-right: ${PDF_SPECS.HEADER.LOGO_HEIGHT/2}px solid transparent;
-            border-bottom: ${PDF_SPECS.HEADER.LOGO_HEIGHT}px solid white;
-            position: relative;
-          "></div>
-          <span style="
             font-family: Arial, sans-serif;
-            font-size: ${PDF_SPECS.HEADER.LOGO_HEIGHT * 0.6}px;
+            font-size: ${PDF_SPECS.HEADER.LOGO_HEIGHT}px;
             font-weight: bold;
             color: white;
-            margin-left: 8px;
-          ">ontop</span>
+            line-height: 1;
+            margin-bottom: 2px;
+          ">Ontop</div>
+          <div style="
+            font-family: Arial, sans-serif;
+            font-size: ${PDF_SPECS.HEADER.FONT_SIZE}px;
+            color: white;
+            line-height: 1;
+          ">Simple, Powerful, Global.</div>
         </div>
       </div>
       <div style="text-align: right">
@@ -249,7 +246,7 @@ export const generateQuotePDF = async (formData: FormData) => {
     document.body.removeChild(container);
     console.log('[PDF] Header element removed');
 
-    // Format Tables with proper targeting - avoid touching CardHeader elements
+    // Format Tables with proper targeting and CardHeader height control
     const formatTable = (table: HTMLElement) => {
       const clone = table.cloneNode(true) as HTMLElement;
       clone.style.cssText = `
@@ -271,7 +268,7 @@ export const generateQuotePDF = async (formData: FormData) => {
         `;
       });
 
-      // Only target actual table headers (th elements inside thead), NOT CardHeader components
+      // Target actual table headers (th elements inside thead)
       clone.querySelectorAll('thead th').forEach(header => {
         (header as HTMLElement).style.cssText = `
           height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
@@ -287,7 +284,28 @@ export const generateQuotePDF = async (formData: FormData) => {
         `;
       });
 
-      // Keep CardHeader elements (table titles) as they are - don't modify them
+      // Target CardHeader elements specifically (the table titles like "Amount You Pay")
+      clone.querySelectorAll('[class*="CardHeader"], .card-header, h3, h2').forEach(cardHeader => {
+        if (cardHeader.textContent?.includes('Amount You Pay') || 
+            cardHeader.textContent?.includes('Amount Employee Gets') || 
+            cardHeader.textContent?.includes('Setup Summary')) {
+          (cardHeader as HTMLElement).style.cssText = `
+            height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
+            line-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
+            background-color: ${PDF_SPECS.COLORS.ONTOP_PINK} !important;
+            color: white !important;
+            font-size: ${PDF_SPECS.TABLE.HEADER_FONT_SIZE}px !important;
+            padding: ${PDF_SPECS.TABLE.PADDING}px !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+            min-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
+            max-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
+            display: flex !important;
+            align-items: center !important;
+          `;
+        }
+      });
+
       // The subtotal rows will keep their existing pink styling from the original CSS
 
       return clone;
