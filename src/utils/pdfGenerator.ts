@@ -16,9 +16,9 @@ const PDF_SPECS = {
     }
   },
   HEADER: {
-    HEIGHT: 80,  // Increased to 80px to prevent cutting
+    HEIGHT: 80,  // Exact height as requested
     LOGO_HEIGHT: 20,  // Perfect logo size
-    FONT_SIZE: 8   // Reduced to 8px
+    FONT_SIZE: 8   // Reduced to 8px as requested
   },
   TABLE: {
     ROW_HEIGHT: 26,
@@ -129,7 +129,7 @@ export const generateQuotePDF = async (formData: FormData) => {
       day: 'numeric'
     });
 
-    // Updated header HTML with logo wrapper to prevent cutting
+    // Create logo using CSS instead of SVG to avoid rendering issues
     header.innerHTML = `
       <div style="height: ${headerHeight}px; display: flex; align-items: center; padding: 10px 0;">
         <div style="
@@ -140,11 +140,21 @@ export const generateQuotePDF = async (formData: FormData) => {
           justify-content: center;
           padding: 5px;
         ">
-          <img 
-            src="/ontop-logo-white.svg"
-            alt="Ontop"
-            style="height: ${PDF_SPECS.HEADER.LOGO_HEIGHT}px; width: auto; display: block;"
-          />
+          <div style="
+            width: 0;
+            height: 0;
+            border-left: ${PDF_SPECS.HEADER.LOGO_HEIGHT/2}px solid transparent;
+            border-right: ${PDF_SPECS.HEADER.LOGO_HEIGHT/2}px solid transparent;
+            border-bottom: ${PDF_SPECS.HEADER.LOGO_HEIGHT}px solid white;
+            position: relative;
+          "></div>
+          <span style="
+            font-family: Arial, sans-serif;
+            font-size: ${PDF_SPECS.HEADER.LOGO_HEIGHT * 0.6}px;
+            font-weight: bold;
+            color: white;
+            margin-left: 8px;
+          ">ontop</span>
         </div>
       </div>
       <div style="text-align: right">
@@ -239,7 +249,7 @@ export const generateQuotePDF = async (formData: FormData) => {
     document.body.removeChild(container);
     console.log('[PDF] Header element removed');
 
-    // Format Tables with compact styles and proper table header targeting
+    // Format Tables with proper targeting - avoid touching CardHeader elements
     const formatTable = (table: HTMLElement) => {
       const clone = table.cloneNode(true) as HTMLElement;
       clone.style.cssText = `
@@ -261,8 +271,8 @@ export const generateQuotePDF = async (formData: FormData) => {
         `;
       });
 
-      // Target actual table headers more specifically - use both class and element selectors
-      clone.querySelectorAll('th, .table-header, [class*="bg-"][class*="FF5A71"]').forEach(header => {
+      // Only target actual table headers (th elements inside thead), NOT CardHeader components
+      clone.querySelectorAll('thead th').forEach(header => {
         (header as HTMLElement).style.cssText = `
           height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
           line-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
@@ -277,21 +287,8 @@ export const generateQuotePDF = async (formData: FormData) => {
         `;
       });
 
-      // Also target CardHeader elements specifically
-      clone.querySelectorAll('[class*="CardHeader"], [role="heading"]').forEach(header => {
-        (header as HTMLElement).style.cssText = `
-          height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
-          line-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
-          background-color: ${PDF_SPECS.COLORS.ONTOP_PINK} !important;
-          color: white !important;
-          font-size: ${PDF_SPECS.TABLE.HEADER_FONT_SIZE}px !important;
-          padding: ${PDF_SPECS.TABLE.PADDING}px !important;
-          margin: 0 !important;
-          box-sizing: border-box !important;
-          min-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
-          max-height: ${PDF_SPECS.TABLE.HEADER_HEIGHT}px !important;
-        `;
-      });
+      // Keep CardHeader elements (table titles) as they are - don't modify them
+      // The subtotal rows will keep their existing pink styling from the original CSS
 
       return clone;
     };
