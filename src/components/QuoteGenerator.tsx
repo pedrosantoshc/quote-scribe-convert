@@ -136,14 +136,19 @@ const QuoteGenerator = () => {
         eorFee
       ];
 
-      // Create proper setup summary without duplicate total
+      // Create proper setup summary using Total Employment Cost instead of Gross Salary
+      const totalEmploymentCostField = convertedPayFields.find(f => 
+        f.label.toLowerCase().includes('total employment cost') ||
+        f.label.toLowerCase().includes('total monthly cost')
+      );
+
       const setupSummary: ParsedField[] = [
         {
-          label: 'Security Deposit (1 month salary)',
-          amount: grossSalaryUSD,
+          label: 'Security Deposit (1 month total cost)',
+          amount: totalEmploymentCostField?.usdAmount || 0,
           currency: 'USD',
-          localAmount: grossSalaryUSD * rateToLocal,
-          usdAmount: grossSalaryUSD
+          localAmount: totalEmploymentCostField?.localAmount || 0,
+          usdAmount: totalEmploymentCostField?.usdAmount || 0
         },
         {
           label: 'Ontop EOR Fee',

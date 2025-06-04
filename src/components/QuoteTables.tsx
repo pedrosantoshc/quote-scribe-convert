@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { QuoteData, FormData, ParsedField } from './QuoteGenerator';
@@ -175,21 +174,23 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
   };
 
   const SetupSummarySection = () => {
-    // Calculate values for setup summary
-    const grossSalaryField = data.payFields.find(field => 
-      field.label.toLowerCase().includes('gross') && field.label.toLowerCase().includes('salary')
+    // Calculate values for setup summary - use Total Employment Cost instead of Gross Salary
+    const totalEmploymentCostField = data.payFields.find(field => 
+      field.label.toLowerCase().includes('total employment cost') ||
+      field.label.toLowerCase().includes('total monthly cost')
     );
     const eorFeeField = data.payFields.find(field => 
       field.label.toLowerCase().includes('ontop eor fee')
     );
     
-    const grossSalaryLocal = grossSalaryField?.localAmount || 0;
-    const grossSalaryUSD = grossSalaryField?.usdAmount || 0;
+    // Use Total Employment Cost as Security Deposit (not Gross Salary)
+    const securityDepositLocal = totalEmploymentCostField?.localAmount || 0;
+    const securityDepositUSD = totalEmploymentCostField?.usdAmount || 0;
     const eorFeeLocal = eorFeeField?.localAmount || 0;
     const eorFeeUSD = eorFeeField?.usdAmount || 0;
     
-    const totalSetupLocal = grossSalaryLocal + eorFeeLocal;
-    const totalSetupUSD = grossSalaryUSD + eorFeeUSD;
+    const totalSetupLocal = securityDepositLocal + eorFeeLocal;
+    const totalSetupUSD = securityDepositUSD + eorFeeUSD;
 
     return (
       <div className="setup-summary-container">
@@ -213,13 +214,13 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
               <tbody className="divide-y divide-gray-200">
                 <tr>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    Security Deposit (1 month salary)
+                    Security Deposit (1 month total cost)
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-medium">
-                    {formatAmount(grossSalaryLocal)} {data.localCurrency}
+                    {formatAmount(securityDepositLocal)} {data.localCurrency}
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-medium">
-                    {formatAmount(grossSalaryUSD)} USD
+                    {formatAmount(securityDepositUSD)} USD
                   </td>
                 </tr>
                 <tr>

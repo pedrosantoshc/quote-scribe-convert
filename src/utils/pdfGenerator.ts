@@ -265,7 +265,7 @@ export const generateQuotePDF = async (formData: FormData) => {
           // THIS is the key - we reset ALL inherited styles first
           header.style.all = 'unset';
           
-          // Then apply our exact styles
+          // Then apply our exact styles with increased font size (11px * 1.25 = 14px)
           header.style.cssText = `
             height: 18px !important;
             min-height: 18px !important;
@@ -275,7 +275,7 @@ export const generateQuotePDF = async (formData: FormData) => {
             margin: 0 !important;
             background-color: #FF5A71;
             color: white;
-            font-size: 11px;
+            font-size: 14px;
             font-weight: 500;
             display: flex;
             align-items: center;
@@ -299,7 +299,7 @@ export const generateQuotePDF = async (formData: FormData) => {
           // Reset ALL inherited styles first
           el.style.all = 'unset';
           
-          // Then apply our exact styles
+          // Then apply our exact styles with increased font size (11px * 1.25 = 14px)
           el.style.cssText = `
             height: 18px !important;
             min-height: 18px !important;
@@ -309,7 +309,7 @@ export const generateQuotePDF = async (formData: FormData) => {
             margin: 0 !important;
             background-color: #FF5A71;
             color: white;
-            font-size: 11px;
+            font-size: 14px;
             font-weight: 500;
             display: flex;
             align-items: center;
