@@ -24,8 +24,8 @@ const PDF_SPECS = {
     ROW_HEIGHT: 26,
     PADDING: 6,  // Reduced padding to match new header height
     FONT_SIZE: 8,
-    HEADER_HEIGHT: 18,  // Significantly reduced from 28px to 18px
-    HEADER_FONT_SIZE: 11
+    HEADER_HEIGHT: 14,  // Reduced from 18px to 14px
+    HEADER_FONT_SIZE: 12  // Keep at 12px
   },
   COLORS: {
     ONTOP_PINK: '#FF5A71',
@@ -265,22 +265,23 @@ export const generateQuotePDF = async (formData: FormData) => {
           // THIS is the key - we reset ALL inherited styles first
           header.style.all = 'unset';
           
-          // Then apply our exact styles with increased font size (11px * 1.25 = 14px)
+          // Then apply our exact styles with 14px height and 12px font
           header.style.cssText = `
-            height: 18px !important;
-            min-height: 18px !important;
-            max-height: 18px !important;
-            line-height: 18px !important;
+            height: 14px !important;
+            min-height: 14px !important;
+            max-height: 14px !important;
+            line-height: 14px !important;
             padding: 0 12px !important;
             margin: 0 !important;
             background-color: #FF5A71;
             color: white;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 500;
             display: flex;
             align-items: center;
             font-family: Arial, sans-serif;
             box-sizing: border-box;
+            overflow: hidden;
           `;
         }
       });
@@ -299,23 +300,24 @@ export const generateQuotePDF = async (formData: FormData) => {
           // Reset ALL inherited styles first
           el.style.all = 'unset';
           
-          // Then apply our exact styles with increased font size (11px * 1.25 = 14px)
+          // Then apply our exact styles with 14px height and 12px font
           el.style.cssText = `
-            height: 18px !important;
-            min-height: 18px !important;
-            max-height: 18px !important;
-            line-height: 18px !important;
+            height: 14px !important;
+            min-height: 14px !important;
+            max-height: 14px !important;
+            line-height: 14px !important;
             padding: 0 12px !important;
             margin: 0 !important;
             background-color: #FF5A71;
             color: white;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 500;
             display: flex;
             align-items: center;
             font-family: Arial, sans-serif;
             box-sizing: border-box;
             width: 100%;
+            overflow: hidden;
           `;
         }
       });
