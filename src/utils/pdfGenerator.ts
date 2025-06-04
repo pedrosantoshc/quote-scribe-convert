@@ -3,7 +3,7 @@ import jsPDF from 'jspdf';
 import { QuoteData, FormData } from '../components/QuoteGenerator';
 import { logPDFGeneration, waitForElementRender, validateElementVisibility, verifyPDFElements } from './pdfValidation';
 
-// Updated PDF_SPECS with exact measurements to fix header cutting and table proportions
+// Updated PDF_SPECS with natural header sizing to prevent text cutting
 const PDF_SPECS = {
   PAGE: {
     WIDTH: 595,
@@ -22,10 +22,10 @@ const PDF_SPECS = {
   },
   TABLE: {
     ROW_HEIGHT: 26,
-    PADDING: 6,  // Reduced padding to match new header height
+    PADDING: 6,
     FONT_SIZE: 8,
-    HEADER_HEIGHT: 14,  // Reduced from 18px to 14px
-    HEADER_FONT_SIZE: 12  // Keep at 12px
+    HEADER_HEIGHT: 'auto',  // Let header size naturally
+    HEADER_FONT_SIZE: 16    // Natural font size that matches live app
   },
   COLORS: {
     ONTOP_PINK: '#FF5A71',
@@ -239,7 +239,7 @@ export const generateQuotePDF = async (formData: FormData) => {
     document.body.removeChild(container);
     console.log('[PDF] Header element removed');
 
-    // Systematic approach to table formatting - reset component tree first
+    // Systematic approach to table formatting - use natural CardHeader styling
     const formatTable = (table: HTMLElement) => {
       const clone = table.cloneNode(true) as HTMLElement;
       clone.style.cssText = `
@@ -262,26 +262,22 @@ export const generateQuotePDF = async (formData: FormData) => {
         // Find the header within this card
         const header = card.querySelector('[role="heading"]');
         if (header && header instanceof HTMLElement) {
-          // THIS is the key - we reset ALL inherited styles first
+          // Reset ALL inherited styles first
           header.style.all = 'unset';
           
-          // Then apply our exact styles with 14px height and 12px font
+          // Apply natural CardHeader styling that matches live app
           header.style.cssText = `
-            height: 14px !important;
-            min-height: 14px !important;
-            max-height: 14px !important;
-            line-height: 14px !important;
-            padding: 0 12px !important;
+            padding: 12px 16px !important;
             margin: 0 !important;
             background-color: #FF5A71;
             color: white;
-            font-size: 12px;
-            font-weight: 500;
+            font-size: 16px;
+            font-weight: 600;
             display: flex;
             align-items: center;
             font-family: Arial, sans-serif;
             box-sizing: border-box;
-            overflow: hidden;
+            width: 100%;
           `;
         }
       });
@@ -300,24 +296,19 @@ export const generateQuotePDF = async (formData: FormData) => {
           // Reset ALL inherited styles first
           el.style.all = 'unset';
           
-          // Then apply our exact styles with 14px height and 12px font
+          // Apply natural CardHeader styling that matches live app
           el.style.cssText = `
-            height: 14px !important;
-            min-height: 14px !important;
-            max-height: 14px !important;
-            line-height: 14px !important;
-            padding: 0 12px !important;
+            padding: 12px 16px !important;
             margin: 0 !important;
             background-color: #FF5A71;
             color: white;
-            font-size: 12px;
-            font-weight: 500;
+            font-size: 16px;
+            font-weight: 600;
             display: flex;
             align-items: center;
             font-family: Arial, sans-serif;
             box-sizing: border-box;
             width: 100%;
-            overflow: hidden;
           `;
         }
       });
