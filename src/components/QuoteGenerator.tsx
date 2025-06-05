@@ -242,7 +242,7 @@ const QuoteGenerator = () => {
       console.log('Analyzing OCR texts:', {pay: ocrTexts.pay, employee: ocrTexts.employee});
       
       // Parse both OCR texts using separate functions
-      const { parsePayScreenshot, parseEmployeeScreenshot, getLocalCurrency } = await import('../utils/ocrParser');
+      const { parsePayScreenshot, parseEmployeeScreenshot, getLocalCurrency, convertAmount } = await import('../utils/ocrParser');
       
       const payParsed = parsePayScreenshot(ocrTexts.pay);
       const employeeParsed = parseEmployeeScreenshot(ocrTexts.employee);
@@ -257,48 +257,32 @@ const QuoteGenerator = () => {
 
       // Convert amounts based on quote currency
       const convertedPayFields = payParsed.payFields.map(field => {
-        const fieldWithDefaults = {
-          ...field,
+        const fieldWithRequiredProps = {
+          label: field.label,
+          amount: field.amount,
+          currency: field.currency,
           usdAmount: field.usdAmount || 0,
           localAmount: field.localAmount || 0
         };
-        let localAmount, usdAmount;
-        
-        if (formData.quoteCurrency === 'USD') {
-          usdAmount = fieldWithDefaults.amount;
-          localAmount = fieldWithDefaults.amount * rateToLocal;
-        } else {
-          localAmount = fieldWithDefaults.amount;
-          usdAmount = fieldWithDefaults.amount * rateToUSD;
-        }
-
+        const converted = convertAmount(fieldWithRequiredProps, localCurrency, rateToLocal, rateToUSD);
         return {
           ...field,
-          localAmount,
-          usdAmount
+          ...converted
         };
       });
 
       const convertedEmployeeFields = employeeParsed.employeeFields.map(field => {
-        const fieldWithDefaults = {
-          ...field,
+        const fieldWithRequiredProps = {
+          label: field.label,
+          amount: field.amount,
+          currency: field.currency,
           usdAmount: field.usdAmount || 0,
           localAmount: field.localAmount || 0
         };
-        let localAmount, usdAmount;
-        
-        if (formData.quoteCurrency === 'USD') {
-          usdAmount = fieldWithDefaults.amount;
-          localAmount = fieldWithDefaults.amount * rateToLocal;
-        } else {
-          localAmount = fieldWithDefaults.amount;
-          usdAmount = fieldWithDefaults.amount * rateToUSD;
-        }
-
+        const converted = convertAmount(fieldWithRequiredProps, localCurrency, rateToLocal, rateToUSD);
         return {
           ...field,
-          localAmount,
-          usdAmount
+          ...converted
         };
       });
 
