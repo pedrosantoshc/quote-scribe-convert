@@ -239,7 +239,7 @@ export const generateQuotePDF = async (formData: FormData) => {
     document.body.removeChild(container);
     console.log('[PDF] Header element removed');
 
-    // Systematic approach to table formatting - use natural CardHeader styling
+    // Revolutionary approach - replace CardHeaders with lightweight divs
     const formatTable = (table: HTMLElement) => {
       const clone = table.cloneNode(true) as HTMLElement;
       clone.style.cssText = `
@@ -248,7 +248,7 @@ export const generateQuotePDF = async (formData: FormData) => {
         border-collapse: collapse;
       `;
       
-      // Step 1: Find all card containers and headers - target the entire component tree
+      // Step 1: Find and replace all CardHeader elements with lightweight divs
       const cardContainers = clone.querySelectorAll('[role="region"]');
       cardContainers.forEach(card => {
         // Reset container styles
@@ -259,30 +259,38 @@ export const generateQuotePDF = async (formData: FormData) => {
           overflow: hidden;
         `;
         
-        // Find the header within this card
+        // Find the header within this card and replace it
         const header = card.querySelector('[role="heading"]');
         if (header && header instanceof HTMLElement) {
-          // Reset ALL inherited styles first
-          header.style.all = 'unset';
+          // Create a new lightweight div to replace the CardHeader
+          const newHeader = document.createElement('div');
+          newHeader.textContent = header.textContent;
           
-          // Apply natural CardHeader styling that matches live app
-          header.style.cssText = `
-            padding: 12px 16px !important;
+          // Apply exact compact styling - 32px height with perfect centering
+          newHeader.style.cssText = `
+            height: 32px !important;
+            line-height: 32px !important;
+            padding: 0 16px !important;
             margin: 0 !important;
-            background-color: #FF5A71;
-            color: white;
-            font-size: 16px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            font-family: Arial, sans-serif;
-            box-sizing: border-box;
-            width: 100%;
+            background-color: #FF5A71 !important;
+            color: white !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            font-family: Arial, sans-serif !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+            display: block !important;
+            text-align: left !important;
+            overflow: hidden !important;
+            white-space: nowrap !important;
           `;
+          
+          // Replace the original header
+          header.parentNode?.replaceChild(newHeader, header);
         }
       });
 
-      // Also target by common card header patterns as fallback
+      // Step 2: Fallback - also target by common card header patterns
       clone.querySelectorAll('*').forEach(element => {
         const el = element as HTMLElement;
         
@@ -293,23 +301,30 @@ export const generateQuotePDF = async (formData: FormData) => {
             (el.classList.contains('CardHeader') || 
              el.tagName === 'H1' || el.tagName === 'H2' || el.tagName === 'H3')) {
           
-          // Reset ALL inherited styles first
-          el.style.all = 'unset';
+          // Create replacement div with exact dimensions
+          const replacement = document.createElement('div');
+          replacement.textContent = el.textContent;
           
-          // Apply natural CardHeader styling that matches live app
-          el.style.cssText = `
-            padding: 12px 16px !important;
+          replacement.style.cssText = `
+            height: 32px !important;
+            line-height: 32px !important;
+            padding: 0 16px !important;
             margin: 0 !important;
-            background-color: #FF5A71;
-            color: white;
-            font-size: 16px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            font-family: Arial, sans-serif;
-            box-sizing: border-box;
-            width: 100%;
+            background-color: #FF5A71 !important;
+            color: white !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            font-family: Arial, sans-serif !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+            display: block !important;
+            text-align: left !important;
+            overflow: hidden !important;
+            white-space: nowrap !important;
           `;
+          
+          // Replace the element
+          el.parentNode?.replaceChild(replacement, el);
         }
       });
 
