@@ -93,7 +93,12 @@ const QuoteGenerator = () => {
 
       // Convert amounts based on quote currency using consistent conversion function
       const convertedPayFields = payParsed.payFields.map(field => {
-        const converted = convertAmount(field.amount, field.currency, localCurrency, rateToLocal, rateToUSD);
+        const fieldWithDefaults = {
+          ...field,
+          usdAmount: field.usdAmount || 0,
+          localAmount: field.localAmount || 0
+        };
+        const converted = convertAmount(fieldWithDefaults.amount, fieldWithDefaults.currency, localCurrency, rateToLocal, rateToUSD);
         return {
           ...field,
           ...converted
@@ -101,7 +106,12 @@ const QuoteGenerator = () => {
       });
 
       const convertedEmployeeFields = employeeParsed.employeeFields.map(field => {
-        const converted = convertAmount(field.amount, field.currency, localCurrency, rateToLocal, rateToUSD);
+        const fieldWithDefaults = {
+          ...field,
+          usdAmount: field.usdAmount || 0,
+          localAmount: field.localAmount || 0
+        };
+        const converted = convertAmount(fieldWithDefaults.amount, fieldWithDefaults.currency, localCurrency, rateToLocal, rateToUSD);
         return {
           ...field,
           ...converted
