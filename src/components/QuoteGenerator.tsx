@@ -77,6 +77,9 @@ const QuoteGenerator = () => {
       const payParsed = parsePayScreenshot(payText);
       const employeeParsed = parseEmployeeScreenshot(employeeText);
       
+      // Log Severance Pay detection
+      console.log('Severance Pay detected in OCR:', payParsed.hasSeverancePay);
+      
       // Get currency conversion rates with error handling
       const rates = await convertCurrency();
       setCurrencyRates(rates);
@@ -113,15 +116,24 @@ const QuoteGenerator = () => {
         f.label.toLowerCase().includes('total monthly cost')
       );
 
-      // Add computed fields to pay fields for final display
-      const dismissalDeposit: ParsedField = {
-        label: 'Dismissal Deposit (1/12 salary)',
-        amount: grossSalaryUSD / 12,
-        currency: 'USD',
-        localAmount: (grossSalaryUSD / 12) * rateToLocal,
-        usdAmount: grossSalaryUSD / 12
-      };
+      // Conditionally add Dismissal Deposit only if Severance Pay is NOT detected
+      const finalPayFields = [...convertedPayFields];
+      
+      if (!payParsed.hasSeverancePay) {
+        console.log('Adding Dismissal Deposit since no Severance Pay detected');
+        const dismissalDeposit: ParsedField = {
+          label: 'Dismissal Deposit (1/12 salary)',
+          amount: grossSalaryUSD / 12,
+          currency: 'USD',
+          localAmount: (grossSalaryUSD / 12) * rateToLocal,
+          usdAmount: grossSalaryUSD / 12
+        };
+        finalPayFields.push(dismissalDeposit);
+      } else {
+        console.log('Skipping Dismissal Deposit since Severance Pay is present');
+      }
 
+      // Always add EOR fee
       const eorFee: ParsedField = {
         label: 'Ontop EOR Fee',
         amount: formData.eorFeeUSD,
@@ -129,12 +141,7 @@ const QuoteGenerator = () => {
         localAmount: eorFeeLocal,
         usdAmount: formData.eorFeeUSD
       };
-
-      const finalPayFields = [
-        ...convertedPayFields,
-        dismissalDeposit,
-        eorFee
-      ];
+      finalPayFields.push(eorFee);
 
       // Create proper setup summary using Total Employment Cost instead of Gross Salary
       const totalEmploymentCostField = convertedPayFields.find(f => 
@@ -159,13 +166,16 @@ const QuoteGenerator = () => {
         }
       ];
 
-      // Calculate total for Amount You Pay table
+      // Calculate total for Amount You Pay table (adjusted for conditional dismissal deposit)
+      const dismissalDepositAmount = payParsed.hasSeverancePay ? 0 : (grossSalaryUSD / 12) * rateToLocal;
+      const dismissalDepositUSD = payParsed.hasSeverancePay ? 0 : grossSalaryUSD / 12;
+      
       const totalYouPayLocal = (totalMonthlyCostField?.localAmount || 0) + 
                                (eorFee.localAmount || 0) + 
-                               (dismissalDeposit.localAmount || 0);
+                               dismissalDepositAmount;
       const totalYouPayUSD = (totalMonthlyCostField?.usdAmount || 0) + 
                              (eorFee.usdAmount || 0) + 
-                             (dismissalDeposit.usdAmount || 0);
+                             dismissalDepositUSD;
 
       const data: QuoteData = {
         payFields: finalPayFields,
@@ -174,7 +184,7 @@ const QuoteGenerator = () => {
         localCurrency,
         quoteCurrency: formData.quoteCurrency,
         exchangeRate: rateToLocal,
-        dismissalDeposit: grossSalaryUSD / 12,
+        dismissalDeposit: dismissalDepositUSD,
         eorFeeLocal: eorFeeLocal,
         totalYouPay: totalYouPayLocal
       };
@@ -184,7 +194,7 @@ const QuoteGenerator = () => {
 
       toast({
         title: "Success!",
-        description: "Quote data extracted and calculated successfully.",
+        description: `Quote data extracted successfully. ${payParsed.hasSeverancePay ? 'Severance Pay detected - Dismissal Deposit excluded.' : 'No Severance Pay detected - Dismissal Deposit included.'}`,
       });
     } catch (error) {
       console.error('Error processing OCR:', error);

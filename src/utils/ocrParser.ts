@@ -1,3 +1,4 @@
+
 import { ParsedField, QuoteData } from '../components/QuoteGenerator';
 
 // Country to currency mapping
@@ -84,7 +85,7 @@ const parseLineAmount = (line: string): { label: string; amount: number; currenc
   return null;
 };
 
-export const parsePayScreenshot = (text: string): { payFields: ParsedField[]; grossSalary: number; currency: string } => {
+export const parsePayScreenshot = (text: string): { payFields: ParsedField[]; grossSalary: number; currency: string; hasSeverancePay: boolean } => {
   console.log('Parsing Pay screenshot OCR text:', text);
 
   const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
@@ -92,6 +93,16 @@ export const parsePayScreenshot = (text: string): { payFields: ParsedField[]; gr
   const payFields: ParsedField[] = [];
   let grossSalary = 0;
   let currency = 'USD';
+  let hasSeverancePay = false;
+
+  // Check for Severance Pay in the text
+  const severancePayExists = lines.some(line => 
+    line.toLowerCase().includes('severance pay') || 
+    line.toLowerCase().includes('severance')
+  );
+  hasSeverancePay = severancePayExists;
+
+  console.log('Severance Pay detected:', hasSeverancePay);
 
   // Find Gross Monthly Salary first
   const gmsLine = lines.find(line => /gross\s+monthly\s+salary/i.test(line));
@@ -135,7 +146,7 @@ export const parsePayScreenshot = (text: string): { payFields: ParsedField[]; gr
     }
   });
 
-  return { payFields, grossSalary, currency };
+  return { payFields, grossSalary, currency, hasSeverancePay };
 };
 
 export const parseEmployeeScreenshot = (text: string): { employeeFields: ParsedField[] } => {
