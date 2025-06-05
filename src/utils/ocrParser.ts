@@ -31,17 +31,17 @@ export const getLocalCurrency = (country: string): string => {
   return COUNTRY_CURRENCY_MAP[country] || 'USD';
 };
 
-// Utility function for consistent currency conversion
-export const convertAmount = (amount: number, sourceCurrency: string, localCurrency: string, rateToLocal: number, rateToUSD: number) => {
-  if (sourceCurrency === 'USD') {
+// Updated utility function for consistent currency conversion
+export const convertAmount = (field: ParsedField, localCurrency: string, rateToLocal: number, rateToUSD: number) => {
+  if (field.currency === 'USD') {
     return {
-      usdAmount: amount,
-      localAmount: amount * rateToLocal
+      usdAmount: field.amount,
+      localAmount: field.amount * rateToLocal
     };
   } else {
     return {
-      localAmount: amount,
-      usdAmount: amount * rateToUSD
+      localAmount: field.amount,
+      usdAmount: field.amount * rateToUSD
     };
   }
 };
