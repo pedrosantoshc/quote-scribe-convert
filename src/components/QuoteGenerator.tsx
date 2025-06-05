@@ -93,7 +93,12 @@ const QuoteGenerator = () => {
 
       // Convert amounts based on quote currency using consistent conversion function
       const convertedPayFields = payParsed.payFields.map(field => {
-        const converted = convertAmount(field, localCurrency, rateToLocal, rateToUSD);
+        const fieldWithDefaults = {
+          ...field,
+          localAmount: field.localAmount || 0,
+          usdAmount: field.usdAmount || 0
+        };
+        const converted = convertAmount(fieldWithDefaults, localCurrency, rateToLocal, rateToUSD);
         return {
           ...field,
           ...converted
@@ -101,7 +106,12 @@ const QuoteGenerator = () => {
       });
 
       const convertedEmployeeFields = employeeParsed.employeeFields.map(field => {
-        const converted = convertAmount(field, localCurrency, rateToLocal, rateToUSD);
+        const fieldWithDefaults = {
+          ...field,
+          localAmount: field.localAmount || 0,
+          usdAmount: field.usdAmount || 0
+        };
+        const converted = convertAmount(fieldWithDefaults, localCurrency, rateToLocal, rateToUSD);
         return {
           ...field,
           ...converted
@@ -243,7 +253,12 @@ const QuoteGenerator = () => {
 
       // Convert amounts based on quote currency
       const convertedPayFields = payParsed.payFields.map(field => {
-        const converted = convertAmount(field, localCurrency, rateToLocal, rateToUSD);
+        const fieldWithDefaults = {
+          ...field,
+          localAmount: field.localAmount || 0,
+          usdAmount: field.usdAmount || 0
+        };
+        const converted = convertAmount(fieldWithDefaults, localCurrency, rateToLocal, rateToUSD);
         return {
           ...field,
           ...converted
@@ -251,7 +266,12 @@ const QuoteGenerator = () => {
       });
 
       const convertedEmployeeFields = employeeParsed.employeeFields.map(field => {
-        const converted = convertAmount(field, localCurrency, rateToLocal, rateToUSD);
+        const fieldWithDefaults = {
+          ...field,
+          localAmount: field.localAmount || 0,
+          usdAmount: field.usdAmount || 0
+        };
+        const converted = convertAmount(fieldWithDefaults, localCurrency, rateToLocal, rateToUSD);
         return {
           ...field,
           ...converted
