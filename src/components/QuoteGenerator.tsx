@@ -253,14 +253,19 @@ const QuoteGenerator = () => {
 
       // Convert amounts based on quote currency
       const convertedPayFields = payParsed.payFields.map(field => {
+        const fieldWithDefaults = {
+          ...field,
+          usdAmount: field.usdAmount || 0,
+          localAmount: field.localAmount || 0
+        };
         let localAmount, usdAmount;
         
         if (formData.quoteCurrency === 'USD') {
-          usdAmount = field.amount;
-          localAmount = field.amount * rateToLocal;
+          usdAmount = fieldWithDefaults.amount;
+          localAmount = fieldWithDefaults.amount * rateToLocal;
         } else {
-          localAmount = field.amount;
-          usdAmount = field.amount * rateToUSD;
+          localAmount = fieldWithDefaults.amount;
+          usdAmount = fieldWithDefaults.amount * rateToUSD;
         }
 
         return {
@@ -271,14 +276,19 @@ const QuoteGenerator = () => {
       });
 
       const convertedEmployeeFields = employeeParsed.employeeFields.map(field => {
+        const fieldWithDefaults = {
+          ...field,
+          usdAmount: field.usdAmount || 0,
+          localAmount: field.localAmount || 0
+        };
         let localAmount, usdAmount;
         
         if (formData.quoteCurrency === 'USD') {
-          usdAmount = field.amount;
-          localAmount = field.amount * rateToLocal;
+          usdAmount = fieldWithDefaults.amount;
+          localAmount = fieldWithDefaults.amount * rateToLocal;
         } else {
-          localAmount = field.amount;
-          usdAmount = field.amount * rateToUSD;
+          localAmount = fieldWithDefaults.amount;
+          usdAmount = fieldWithDefaults.amount * rateToUSD;
         }
 
         return {
