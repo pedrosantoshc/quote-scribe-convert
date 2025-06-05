@@ -77,9 +77,6 @@ const QuoteGenerator = () => {
       const payParsed = parsePayScreenshot(payText);
       const employeeParsed = parseEmployeeScreenshot(employeeText);
       
-      // Log Severance Pay detection
-      console.log('Severance Pay detected in OCR:', payParsed.hasSeverancePay);
-      
       // Get currency conversion rates with error handling
       const rates = await convertCurrency();
       setCurrencyRates(rates);
@@ -93,12 +90,7 @@ const QuoteGenerator = () => {
 
       // Convert amounts based on quote currency using consistent conversion function
       const convertedPayFields = payParsed.payFields.map(field => {
-        const fieldWithDefaults = {
-          ...field,
-          localAmount: field.localAmount || 0,
-          usdAmount: field.usdAmount || 0
-        };
-        const converted = convertAmount(fieldWithDefaults, localCurrency, rateToLocal, rateToUSD);
+        const converted = convertAmount(field.amount, field.currency, localCurrency, rateToLocal, rateToUSD);
         return {
           ...field,
           ...converted
@@ -106,12 +98,7 @@ const QuoteGenerator = () => {
       });
 
       const convertedEmployeeFields = employeeParsed.employeeFields.map(field => {
-        const fieldWithDefaults = {
-          ...field,
-          localAmount: field.localAmount || 0,
-          usdAmount: field.usdAmount || 0
-        };
-        const converted = convertAmount(fieldWithDefaults, localCurrency, rateToLocal, rateToUSD);
+        const converted = convertAmount(field.amount, field.currency, localCurrency, rateToLocal, rateToUSD);
         return {
           ...field,
           ...converted
@@ -126,24 +113,15 @@ const QuoteGenerator = () => {
         f.label.toLowerCase().includes('total monthly cost')
       );
 
-      // Conditionally add Dismissal Deposit only if Severance Pay is NOT detected
-      const finalPayFields = [...convertedPayFields];
-      
-      if (!payParsed.hasSeverancePay) {
-        console.log('Adding Dismissal Deposit since no Severance Pay detected');
-        const dismissalDeposit: ParsedField = {
-          label: 'Dismissal Deposit (1/12 salary)',
-          amount: grossSalaryUSD / 12,
-          currency: 'USD',
-          localAmount: (grossSalaryUSD / 12) * rateToLocal,
-          usdAmount: grossSalaryUSD / 12
-        };
-        finalPayFields.push(dismissalDeposit);
-      } else {
-        console.log('Skipping Dismissal Deposit since Severance Pay is present');
-      }
+      // Add computed fields to pay fields for final display
+      const dismissalDeposit: ParsedField = {
+        label: 'Dismissal Deposit (1/12 salary)',
+        amount: grossSalaryUSD / 12,
+        currency: 'USD',
+        localAmount: (grossSalaryUSD / 12) * rateToLocal,
+        usdAmount: grossSalaryUSD / 12
+      };
 
-      // Always add EOR fee
       const eorFee: ParsedField = {
         label: 'Ontop EOR Fee',
         amount: formData.eorFeeUSD,
@@ -151,7 +129,12 @@ const QuoteGenerator = () => {
         localAmount: eorFeeLocal,
         usdAmount: formData.eorFeeUSD
       };
-      finalPayFields.push(eorFee);
+
+      const finalPayFields = [
+        ...convertedPayFields,
+        dismissalDeposit,
+        eorFee
+      ];
 
       // Create proper setup summary using Total Employment Cost instead of Gross Salary
       const totalEmploymentCostField = convertedPayFields.find(f => 
@@ -176,16 +159,13 @@ const QuoteGenerator = () => {
         }
       ];
 
-      // Calculate total for Amount You Pay table (adjusted for conditional dismissal deposit)
-      const dismissalDepositAmount = payParsed.hasSeverancePay ? 0 : (grossSalaryUSD / 12) * rateToLocal;
-      const dismissalDepositUSD = payParsed.hasSeverancePay ? 0 : grossSalaryUSD / 12;
-      
+      // Calculate total for Amount You Pay table
       const totalYouPayLocal = (totalMonthlyCostField?.localAmount || 0) + 
                                (eorFee.localAmount || 0) + 
-                               dismissalDepositAmount;
+                               (dismissalDeposit.localAmount || 0);
       const totalYouPayUSD = (totalMonthlyCostField?.usdAmount || 0) + 
                              (eorFee.usdAmount || 0) + 
-                             dismissalDepositUSD;
+                             (dismissalDeposit.usdAmount || 0);
 
       const data: QuoteData = {
         payFields: finalPayFields,
@@ -194,7 +174,7 @@ const QuoteGenerator = () => {
         localCurrency,
         quoteCurrency: formData.quoteCurrency,
         exchangeRate: rateToLocal,
-        dismissalDeposit: dismissalDepositUSD,
+        dismissalDeposit: grossSalaryUSD / 12,
         eorFeeLocal: eorFeeLocal,
         totalYouPay: totalYouPayLocal
       };
@@ -204,7 +184,7 @@ const QuoteGenerator = () => {
 
       toast({
         title: "Success!",
-        description: `Quote data extracted successfully. ${payParsed.hasSeverancePay ? 'Severance Pay detected - Dismissal Deposit excluded.' : 'No Severance Pay detected - Dismissal Deposit included.'}`,
+        description: "Quote data extracted and calculated successfully.",
       });
     } catch (error) {
       console.error('Error processing OCR:', error);
@@ -238,7 +218,7 @@ const QuoteGenerator = () => {
       console.log('Analyzing OCR texts:', {pay: ocrTexts.pay, employee: ocrTexts.employee});
       
       // Parse both OCR texts using separate functions
-      const { parsePayScreenshot, parseEmployeeScreenshot, getLocalCurrency, convertAmount } = await import('../utils/ocrParser');
+      const { parsePayScreenshot, parseEmployeeScreenshot, getLocalCurrency } = await import('../utils/ocrParser');
       
       const payParsed = parsePayScreenshot(ocrTexts.pay);
       const employeeParsed = parseEmployeeScreenshot(ocrTexts.employee);
@@ -253,28 +233,38 @@ const QuoteGenerator = () => {
 
       // Convert amounts based on quote currency
       const convertedPayFields = payParsed.payFields.map(field => {
-        const fieldWithDefaults = {
-          ...field,
-          localAmount: field.localAmount || 0,
-          usdAmount: field.usdAmount || 0
-        };
-        const converted = convertAmount(fieldWithDefaults, localCurrency, rateToLocal, rateToUSD);
+        let localAmount, usdAmount;
+        
+        if (formData.quoteCurrency === 'USD') {
+          usdAmount = field.amount;
+          localAmount = field.amount * rateToLocal;
+        } else {
+          localAmount = field.amount;
+          usdAmount = field.amount * rateToUSD;
+        }
+
         return {
           ...field,
-          ...converted
+          localAmount,
+          usdAmount
         };
       });
 
       const convertedEmployeeFields = employeeParsed.employeeFields.map(field => {
-        const fieldWithDefaults = {
-          ...field,
-          localAmount: field.localAmount || 0,
-          usdAmount: field.usdAmount || 0
-        };
-        const converted = convertAmount(fieldWithDefaults, localCurrency, rateToLocal, rateToUSD);
+        let localAmount, usdAmount;
+        
+        if (formData.quoteCurrency === 'USD') {
+          usdAmount = field.amount;
+          localAmount = field.amount * rateToLocal;
+        } else {
+          localAmount = field.amount;
+          usdAmount = field.amount * rateToUSD;
+        }
+
         return {
           ...field,
-          ...converted
+          localAmount,
+          usdAmount
         };
       });
 
