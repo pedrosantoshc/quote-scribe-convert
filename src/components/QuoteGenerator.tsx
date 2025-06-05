@@ -72,7 +72,7 @@ const QuoteGenerator = () => {
       console.log('OCR Texts extracted:', {pay: payText, employee: employeeText});
       
       // Parse both OCR texts using new separate functions
-      const { parsePayScreenshot, parseEmployeeScreenshot, getLocalCurrency, convertAmount } = await import('../utils/ocrParser');
+      const { parsePayScreenshot, parseEmployeeScreenshot, getLocalCurrency, processAmountYouPayFields } = await import('../utils/ocrParser');
       
       const payParsed = parsePayScreenshot(payText);
       const employeeParsed = parseEmployeeScreenshot(employeeText);
@@ -85,18 +85,20 @@ const QuoteGenerator = () => {
       const rateToLocal = rates.rates[localCurrency] || 1;
       const rateToUSD = 1 / rateToLocal;
 
-      // Calculate EOR fee in local currency
-      const eorFeeLocal = formData.eorFeeUSD * rateToLocal;
+      // Get gross salary in USD (always use USD for calculations)
+      const grossSalaryUSD = formData.quoteCurrency === 'USD' ? payParsed.grossSalary : payParsed.grossSalary * rateToUSD;
 
-      // Convert amounts based on quote currency using consistent conversion function
-      const convertedPayFields = payParsed.payFields.map(field => {
-        const converted = convertAmount(field.amount, field.currency, localCurrency, rateToLocal, rateToUSD);
-        return {
-          ...field,
-          ...converted
-        };
-      });
+      // Process Amount You Pay fields with Severance Pay logic
+      const processedPayFields = processAmountYouPayFields(
+        payParsed.payFields,
+        grossSalaryUSD,
+        formData.eorFeeUSD,
+        rateToLocal,
+        rateToUSD
+      );
 
+      // Convert employee fields
+      const { convertAmount } = await import('../utils/ocrParser');
       const convertedEmployeeFields = employeeParsed.employeeFields.map(field => {
         const converted = convertAmount(field.amount, field.currency, localCurrency, rateToLocal, rateToUSD);
         return {
@@ -105,77 +107,50 @@ const QuoteGenerator = () => {
         };
       });
 
-      // Get gross salary in USD (always use USD for calculations)
-      const grossSalaryUSD = formData.quoteCurrency === 'USD' ? payParsed.grossSalary : payParsed.grossSalary * rateToUSD;
-
-      // Find the total monthly cost field
-      const totalMonthlyCostField = convertedPayFields.find(f => 
-        f.label.toLowerCase().includes('total monthly cost')
+      // Find the total monthly cost field for setup summary
+      const totalMonthlyCostField = processedPayFields.find(f => 
+        f.label.toLowerCase().includes('total monthly cost') ||
+        f.label.toLowerCase().includes('total employment cost')
       );
 
-      // Add computed fields to pay fields for final display
-      const dismissalDeposit: ParsedField = {
-        label: 'Dismissal Deposit (1/12 salary)',
-        amount: grossSalaryUSD / 12,
-        currency: 'USD',
-        localAmount: (grossSalaryUSD / 12) * rateToLocal,
-        usdAmount: grossSalaryUSD / 12
-      };
-
-      const eorFee: ParsedField = {
-        label: 'Ontop EOR Fee',
-        amount: formData.eorFeeUSD,
-        currency: 'USD',
-        localAmount: eorFeeLocal,
-        usdAmount: formData.eorFeeUSD
-      };
-
-      const finalPayFields = [
-        ...convertedPayFields,
-        dismissalDeposit,
-        eorFee
-      ];
-
-      // Create proper setup summary using Total Employment Cost instead of Gross Salary
-      const totalEmploymentCostField = convertedPayFields.find(f => 
-        f.label.toLowerCase().includes('total employment cost') ||
-        f.label.toLowerCase().includes('total monthly cost')
-      );
-
+      // Create setup summary using Total Employment Cost
       const setupSummary: ParsedField[] = [
         {
           label: 'Security Deposit (1 month total cost)',
-          amount: totalEmploymentCostField?.usdAmount || 0,
+          amount: totalMonthlyCostField?.usdAmount || 0,
           currency: 'USD',
-          localAmount: totalEmploymentCostField?.localAmount || 0,
-          usdAmount: totalEmploymentCostField?.usdAmount || 0
+          localAmount: totalMonthlyCostField?.localAmount || 0,
+          usdAmount: totalMonthlyCostField?.usdAmount || 0
         },
         {
           label: 'Ontop EOR Fee',
           amount: formData.eorFeeUSD,
           currency: 'USD',
-          localAmount: eorFeeLocal,
+          localAmount: formData.eorFeeUSD * rateToLocal,
           usdAmount: formData.eorFeeUSD
         }
       ];
 
       // Calculate total for Amount You Pay table
+      const eorFeeField = processedPayFields.find(f => f.label.toLowerCase().includes('ontop eor fee'));
+      const dismissalOrSeveranceField = processedPayFields.find(f => 
+        f.label.toLowerCase().includes('dismissal deposit') || 
+        f.label.toLowerCase().includes('severance pay')
+      );
+
       const totalYouPayLocal = (totalMonthlyCostField?.localAmount || 0) + 
-                               (eorFee.localAmount || 0) + 
-                               (dismissalDeposit.localAmount || 0);
-      const totalYouPayUSD = (totalMonthlyCostField?.usdAmount || 0) + 
-                             (eorFee.usdAmount || 0) + 
-                             (dismissalDeposit.usdAmount || 0);
+                               (eorFeeField?.localAmount || 0) + 
+                               (dismissalOrSeveranceField?.localAmount || 0);
 
       const data: QuoteData = {
-        payFields: finalPayFields,
+        payFields: processedPayFields,
         employeeFields: convertedEmployeeFields,
         setupSummary,
         localCurrency,
         quoteCurrency: formData.quoteCurrency,
         exchangeRate: rateToLocal,
         dismissalDeposit: grossSalaryUSD / 12,
-        eorFeeLocal: eorFeeLocal,
+        eorFeeLocal: formData.eorFeeUSD * rateToLocal,
         totalYouPay: totalYouPayLocal
       };
 

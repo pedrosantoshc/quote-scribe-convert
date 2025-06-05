@@ -45,6 +45,81 @@ export const convertAmount = (amount: number, sourceCurrency: string, localCurre
   }
 };
 
+// Add new type for converted fields with required properties
+export interface ConvertedField {
+  label: string;
+  amount: number;
+  currency: string;
+  usdAmount: number;
+  localAmount: number;
+}
+
+// Helper function to safely convert ParsedField to ConvertedField
+export const convertParsedField = (field: ParsedField, defaultUSD = 0, defaultLocal = 0): ConvertedField => {
+  return {
+    label: field.label,
+    amount: field.amount,
+    currency: field.currency,
+    usdAmount: field.usdAmount ?? defaultUSD,
+    localAmount: field.localAmount ?? defaultLocal
+  };
+};
+
+// Function to check if Severance Pay exists in the data
+export const hasSeverancePay = (fields: ParsedField[]): boolean => {
+  return fields.some(field => 
+    field.label.toLowerCase().includes('severance pay') ||
+    field.label.toLowerCase().includes('severance')
+  );
+};
+
+// Function to process Amount You Pay fields with Severance Pay logic
+export const processAmountYouPayFields = (
+  parsedFields: ParsedField[], 
+  grossSalary: number, 
+  eorFeeUSD: number,
+  rateToLocal: number,
+  rateToUSD: number
+): ConvertedField[] => {
+  console.log('Processing Amount You Pay fields with Severance Pay logic');
+  
+  const severancePayExists = hasSeverancePay(parsedFields);
+  console.log('Severance Pay detected:', severancePayExists);
+
+  // Convert parsed fields with proper currency conversion
+  const convertedFields = parsedFields.map(field => {
+    const converted = convertAmount(field.amount, field.currency, getLocalCurrency(''), rateToLocal, rateToUSD);
+    return convertParsedField(field, converted.usdAmount, converted.localAmount);
+  });
+
+  // Add Dismissal Deposit only if Severance Pay is NOT present
+  if (!severancePayExists) {
+    console.log('Adding Dismissal Deposit (no Severance Pay found)');
+    const dismissalDeposit: ConvertedField = {
+      label: 'Dismissal Deposit (1/12 salary)',
+      amount: grossSalary / 12,
+      currency: 'USD',
+      localAmount: (grossSalary / 12) * rateToLocal,
+      usdAmount: grossSalary / 12
+    };
+    convertedFields.push(dismissalDeposit);
+  } else {
+    console.log('Skipping Dismissal Deposit (Severance Pay found)');
+  }
+
+  // Always add EOR Fee
+  const eorFee: ConvertedField = {
+    label: 'Ontop EOR Fee',
+    amount: eorFeeUSD,
+    currency: 'USD',
+    localAmount: eorFeeUSD * rateToLocal,
+    usdAmount: eorFeeUSD
+  };
+  convertedFields.push(eorFee);
+
+  return convertedFields;
+};
+
 const parseLineAmount = (line: string): { label: string; amount: number; currency: string } | null => {
   // Enhanced pattern matching for different line formats
   const amountMatch = line.match(/^(.+?)\s+([A-Z]{3})\s*([\d,.]+)$/i) || 
