@@ -131,16 +131,36 @@ const QuoteGenerator = () => {
         }
       ];
 
-      // Calculate total for Amount You Pay table
+      // Calculate total for Amount You Pay table with proper Severance Pay handling
       const eorFeeField = processedPayFields.find(f => f.label.toLowerCase().includes('ontop eor fee'));
       const dismissalOrSeveranceField = processedPayFields.find(f => 
         f.label.toLowerCase().includes('dismissal deposit') || 
         f.label.toLowerCase().includes('severance pay')
       );
 
-      const totalYouPayLocal = (totalMonthlyCostField?.localAmount || 0) + 
-                               (eorFeeField?.localAmount || 0) + 
-                               (dismissalOrSeveranceField?.localAmount || 0);
+      // Check if severance pay exists to determine which fields to include in total
+      const hasSeverancePay = processedPayFields.some(f => 
+        f.label.toLowerCase().includes('severance pay')
+      );
+
+      console.log('Severance Pay detected:', hasSeverancePay);
+      console.log('Total Employment Cost:', totalMonthlyCostField?.localAmount);
+      console.log('EOR Fee:', eorFeeField?.localAmount);
+      console.log('Dismissal/Severance:', dismissalOrSeveranceField?.localAmount);
+
+      let totalYouPayLocal = 0;
+      
+      if (hasSeverancePay) {
+        // When severance pay exists, total = Total Employment Cost + EOR Fee
+        totalYouPayLocal = (totalMonthlyCostField?.localAmount || 0) + (eorFeeField?.localAmount || 0);
+      } else {
+        // When no severance pay, total = Total Employment Cost + EOR Fee + Dismissal Deposit
+        totalYouPayLocal = (totalMonthlyCostField?.localAmount || 0) + 
+                           (eorFeeField?.localAmount || 0) + 
+                           (dismissalOrSeveranceField?.localAmount || 0);
+      }
+
+      console.log('Calculated Total You Pay (Local):', totalYouPayLocal);
 
       const data: QuoteData = {
         payFields: processedPayFields,

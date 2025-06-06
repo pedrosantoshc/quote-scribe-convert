@@ -57,25 +57,52 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
     return `${formatAmount(amount)} ${currency}`;
   };
 
-  // Special calculation for Amount You Pay table
+  // Special calculation for Amount You Pay table with proper Severance Pay handling
   const calculatePayTableTotal = (fields: ParsedField[]) => {
+    console.log('Calculating Pay Table Total with fields:', fields);
+    
     const totalMonthlyCost = fields.find(f => 
       f.label.toLowerCase().includes('total monthly cost') || 
       f.label.toLowerCase().includes('total employment cost')
     );
     const eorFee = fields.find(f => f.label.toLowerCase().includes('ontop eor fee'));
-    const dismissalDeposit = fields.find(f => f.label.toLowerCase().includes('dismissal deposit'));
+    
+    // Check if severance pay exists
+    const hasSeverancePay = fields.some(f => 
+      f.label.toLowerCase().includes('severance pay')
+    );
+    
+    console.log('Has Severance Pay:', hasSeverancePay);
+    console.log('Total Monthly Cost:', totalMonthlyCost?.localAmount, totalMonthlyCost?.usdAmount);
+    console.log('EOR Fee:', eorFee?.localAmount, eorFee?.usdAmount);
 
-    if (totalMonthlyCost && eorFee && dismissalDeposit) {
-      return {
-        localTotal: (totalMonthlyCost.localAmount || 0) + 
-                    (eorFee.localAmount || 0) + 
-                    (dismissalDeposit.localAmount || 0),
-        usdTotal: (totalMonthlyCost.usdAmount || 0) + 
-                  (eorFee.usdAmount || 0) + 
-                  (dismissalDeposit.usdAmount || 0)
-      };
+    if (totalMonthlyCost && eorFee) {
+      if (hasSeverancePay) {
+        // When severance pay exists, don't include dismissal deposit in total
+        const localTotal = (totalMonthlyCost.localAmount || 0) + (eorFee.localAmount || 0);
+        const usdTotal = (totalMonthlyCost.usdAmount || 0) + (eorFee.usdAmount || 0);
+        
+        console.log('Severance Pay case - Local Total:', localTotal, 'USD Total:', usdTotal);
+        
+        return { localTotal, usdTotal };
+      } else {
+        // When no severance pay, include dismissal deposit in total
+        const dismissalDeposit = fields.find(f => f.label.toLowerCase().includes('dismissal deposit'));
+        
+        const localTotal = (totalMonthlyCost.localAmount || 0) + 
+                          (eorFee.localAmount || 0) + 
+                          (dismissalDeposit?.localAmount || 0);
+        const usdTotal = (totalMonthlyCost.usdAmount || 0) + 
+                        (eorFee.usdAmount || 0) + 
+                        (dismissalDeposit?.usdAmount || 0);
+        
+        console.log('No Severance Pay case - Local Total:', localTotal, 'USD Total:', usdTotal);
+        
+        return { localTotal, usdTotal };
+      }
     }
+    
+    console.log('Fallback case - returning zero totals');
     return { localTotal: 0, usdTotal: 0 };
   };
 
