@@ -1,6 +1,5 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Camera, Loader2, CheckCircle, Play } from 'lucide-react';
+import { Upload, Camera, Loader2, CheckCircle, Play, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Tesseract from 'tesseract.js';
 
@@ -94,6 +93,20 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
       setEmployeeComplete(false);
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleRemovePayImage = () => {
+    setPayImage(null);
+    setUploadedImages(prev => ({...prev, pay: null}));
+    setPayComplete(false);
+    setPayProgress(0);
+  };
+
+  const handleRemoveEmployeeImage = () => {
+    setEmployeeImage(null);
+    setUploadedImages(prev => ({...prev, employee: null}));
+    setEmployeeComplete(false);
+    setEmployeeProgress(0);
   };
 
   const processPayImage = async (imageDataUrl: string) => {
@@ -263,7 +276,18 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
 
           {payImage && (
             <div className="space-y-3">
-              <h4 className="font-medium text-gray-900">Preview:</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-gray-900">Preview:</h4>
+                <Button
+                  onClick={handleRemovePayImage}
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Remove
+                </Button>
+              </div>
               <div className="border rounded-lg overflow-hidden">
                 <img
                   src={payImage}
@@ -341,7 +365,18 @@ const DualImageUpload: React.FC<DualImageUploadProps> = ({ onOCRComplete, isProc
 
           {employeeImage && (
             <div className="space-y-3">
-              <h4 className="font-medium text-gray-900">Preview:</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-gray-900">Preview:</h4>
+                <Button
+                  onClick={handleRemoveEmployeeImage}
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Remove
+                </Button>
+              </div>
               <div className="border rounded-lg overflow-hidden">
                 <img
                   src={employeeImage}
