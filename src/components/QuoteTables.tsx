@@ -181,7 +181,7 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
                     
                     if (isTotalEmployment) {
                       // Special styling for Total Employment Cost
-                      rowClass += ` ${TOTAL_EMPLOYMENT_BG_COLOR} ${TOTAL_EMPLOYMENT_TEXT_COLOR} font-semibold border-l-4 border-blue-400`;
+                      rowClass = `${TOTAL_EMPLOYMENT_BG_COLOR} ${TOTAL_EMPLOYMENT_TEXT_COLOR} font-semibold border-l-4 border-blue-400 hover:bg-blue-100 transition-colors`;
                     } else if (isSubtotalRow) {
                       // Regular subtotal styling
                       rowClass += ` ${SUBTOTAL_BG_COLOR} ${SUBTOTAL_TEXT_COLOR} font-semibold`;
@@ -209,7 +209,9 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
                   })}
                   {showTotal && fields.length > 0 && (
                     <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
-                      <td className="px-6 py-4 text-sm text-gray-900">Total</td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {isPayTable ? 'Total Monthly Cost' : 'Total'}
+                      </td>
                       <td className="px-6 py-4 text-sm font-bold text-gray-900 text-right">
                         {formatCurrency(totals.localTotal, data.localCurrency)}
                       </td>
