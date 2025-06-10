@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { QuoteData, FormData, ParsedField } from './QuoteGenerator';
@@ -18,12 +19,17 @@ const PAY_SUBTOTALS = [
 
 const EMPLOYEE_SUBTOTALS = [
   'total employee contribution',
-  'extra mandatory payments'
+  'extra mandatory payments',
+  'income tax'
 ].map(s => s.toLowerCase());
 
 // Ontop brand colors for subtotal highlighting
 const SUBTOTAL_BG_COLOR = 'bg-[#FFF1F2]'; // Light pink background
 const SUBTOTAL_TEXT_COLOR = 'text-[#FF5A71]'; // Ontop pink text
+
+// Special styling for Total Employment Cost
+const TOTAL_EMPLOYMENT_BG_COLOR = 'bg-blue-50'; // Light blue background
+const TOTAL_EMPLOYMENT_TEXT_COLOR = 'text-blue-700'; // Blue text
 
 // Function to detect subtotals
 const isSubtotal = (label: string, tableType: 'pay' | 'employee'): boolean => {
@@ -36,6 +42,16 @@ const isSubtotal = (label: string, tableType: 'pay' | 'employee'): boolean => {
 const isGrossSalary = (label: string): boolean => {
   return label.toLowerCase().includes('gross monthly salary') || 
          label.toLowerCase().includes('total gross monthly salary');
+};
+
+// Function to detect Total Employment Cost
+const isTotalEmploymentCost = (label: string): boolean => {
+  return label.toLowerCase().includes('total employment cost');
+};
+
+// Function to detect Net Monthly Salary
+const isNetMonthlySalary = (label: string): boolean => {
+  return label.toLowerCase().includes('net monthly salary');
 };
 
 // Function to override labels
@@ -156,25 +172,36 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
                 <tbody className="divide-y divide-gray-200">
                   {fields.map((field, index) => {
                     const isSubtotalRow = isSubtotal(field.label, tableType as 'pay' | 'employee');
-                    const isNetSalary = isEmployeeTable && field.label.toLowerCase().includes('net monthly salary');
+                    const isNetSalary = isEmployeeTable && isNetMonthlySalary(field.label);
                     const isGross = isGrossSalary(field.label);
+                    const isTotalEmployment = isTotalEmploymentCost(field.label);
                     
-                    const rowClass = `
-                      ${isSubtotalRow ? `${SUBTOTAL_BG_COLOR} ${SUBTOTAL_TEXT_COLOR} font-semibold` : ''}
-                      ${isNetSalary ? 'bg-gray-50 font-semibold' : ''}
-                      ${isGross ? 'font-medium' : ''}
-                      hover:bg-gray-50 transition-colors
-                    `.trim();
+                    let rowClass = 'hover:bg-gray-50 transition-colors';
+                    let textClass = '';
+                    
+                    if (isTotalEmployment) {
+                      // Special styling for Total Employment Cost
+                      rowClass += ` ${TOTAL_EMPLOYMENT_BG_COLOR} ${TOTAL_EMPLOYMENT_TEXT_COLOR} font-semibold border-l-4 border-blue-400`;
+                    } else if (isSubtotalRow) {
+                      // Regular subtotal styling
+                      rowClass += ` ${SUBTOTAL_BG_COLOR} ${SUBTOTAL_TEXT_COLOR} font-semibold`;
+                    } else if (isNetSalary) {
+                      // Net salary styling
+                      rowClass += ' bg-gray-50 font-semibold';
+                    } else if (isGross) {
+                      // Gross salary styling - make it bold
+                      textClass = 'font-bold';
+                    }
                     
                     return (
                       <tr key={index} className={rowClass}>
-                        <td className="px-6 py-4 text-sm">
+                        <td className={`px-6 py-4 text-sm ${textClass}`}>
                           {overrideLabel(field.label, tableType)}
                         </td>
-                        <td className="px-6 py-4 text-sm font-medium text-right">
+                        <td className={`px-6 py-4 text-sm font-medium text-right ${textClass}`}>
                           {formatCurrency(field.localAmount || field.amount, data.localCurrency)}
                         </td>
-                        <td className="px-6 py-4 text-sm font-medium text-right">
+                        <td className={`px-6 py-4 text-sm font-medium text-right ${textClass}`}>
                           {formatCurrency(field.usdAmount || (field.amount / data.exchangeRate), 'USD')}
                         </td>
                       </tr>
@@ -239,7 +266,7 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                <tr>
+                <tr className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 text-sm text-gray-900">
                     Security Deposit (1 month total cost)
                   </td>
@@ -250,7 +277,7 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
                     {formatAmount(securityDepositUSD)} USD
                   </td>
                 </tr>
-                <tr>
+                <tr className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 text-sm text-gray-900">
                     Ontop EOR Fee
                   </td>
@@ -282,16 +309,16 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="header">
-        <h2 className="text-3xl font-bold text-gray-900">Quote Summary</h2>
-        <p className="text-gray-600 mt-1">
-          Quote for {formData.clientName} • Generated by {formData.aeName}
+      {/* Header with improved typography */}
+      <div className="header text-center">
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Quote Summary</h2>
+        <p className="text-lg text-gray-600">
+          Quote for <span className="font-semibold text-[#FF5A71]">{formData.clientName}</span> • Generated by <span className="font-semibold">{formData.aeName}</span>
         </p>
       </div>
 
-      {/* Tables Stacked Vertically */}
-      <div className="space-y-6">
+      {/* Tables Stacked Vertically with better spacing */}
+      <div className="space-y-8">
         <TableCard
           title="Amount You Pay"
           fields={data.payFields}
