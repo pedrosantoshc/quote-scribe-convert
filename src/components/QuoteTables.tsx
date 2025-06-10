@@ -44,9 +44,12 @@ const isGrossSalary = (label: string): boolean => {
          label.toLowerCase().includes('total gross monthly salary');
 };
 
-// Function to detect Total Employment Cost
+// Function to detect Total Employment Cost - improved detection
 const isTotalEmploymentCost = (label: string): boolean => {
-  return label.toLowerCase().includes('total employment cost');
+  const normalizedLabel = label.toLowerCase().trim();
+  return normalizedLabel.includes('total employment cost') || 
+         normalizedLabel.includes('total monthly cost') ||
+         (normalizedLabel.includes('total') && normalizedLabel.includes('employment'));
 };
 
 // Function to detect Net Monthly Salary
@@ -179,9 +182,13 @@ const QuoteTables: React.FC<QuoteTablesProps> = ({ data, formData }) => {
                     let rowClass = 'hover:bg-gray-50 transition-colors';
                     let textClass = '';
                     
+                    console.log('Field label:', field.label, 'isTotalEmployment:', isTotalEmployment);
+                    
                     if (isTotalEmployment) {
-                      // Special styling for Total Employment Cost
+                      // Special styling for Total Employment Cost - completely override the class
                       rowClass = `${TOTAL_EMPLOYMENT_BG_COLOR} ${TOTAL_EMPLOYMENT_TEXT_COLOR} font-semibold border-l-4 border-blue-400 hover:bg-blue-100 transition-colors`;
+                      textClass = TOTAL_EMPLOYMENT_TEXT_COLOR;
+                      console.log('Applied Total Employment Cost styling');
                     } else if (isSubtotalRow) {
                       // Regular subtotal styling
                       rowClass += ` ${SUBTOTAL_BG_COLOR} ${SUBTOTAL_TEXT_COLOR} font-semibold`;
