@@ -382,7 +382,7 @@ const QuoteGenerator = () => {
       quoteCurrency: 'USD',
       aeName: '',
       clientName: '',
-      eorFeeUSD: 0
+      eorFeeUSD: 499
     });
     setOcrTexts({pay: '', employee: ''});
     setQuoteData(null);
