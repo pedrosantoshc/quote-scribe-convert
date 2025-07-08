@@ -20,10 +20,10 @@ const COUNTRY_CURRENCY_MAP: Record<string, string> = {
   "Peru": "PEN", "Philippines": "PHP", "Poland": "PLN", "Portugal": "EUR",
   "Puerto Rico": "USD", "Romania": "RON", "Rwanda": "RWF", "Senegal": "XOF",
   "Singapore": "SGD", "Slovakia": "EUR", "Slovenia": "EUR", "South Africa": "ZAR",
-  "South Korea": "KRW", "Spain": "EUR", "Sri Lanka": "LKR", "Taiwan": "TWD",
-  "Tanzania": "TZS", "Thailand": "THB", "Turkey": "TRY", "Uganda": "UGX",
-  "United Kingdom": "GBP", "Uruguay": "UYU", "USA": "USD", "Venezuela": "VES",
-  "Zambia": "ZMW", "Zimbabwe": "ZWL"
+  "South Korea": "KRW", "Spain": "EUR", "Sri Lanka": "LKR", "Sweden": "SEK",
+  "Taiwan": "TWD", "Tanzania": "TZS", "Thailand": "THB", "Turkey": "TRY",
+  "Uganda": "UGX", "United Kingdom": "GBP", "Uruguay": "UYU", "USA": "USD",
+  "Venezuela": "VES", "Zambia": "ZMW", "Zimbabwe": "ZWL"
 };
 
 export const getLocalCurrency = (country: string): string => {

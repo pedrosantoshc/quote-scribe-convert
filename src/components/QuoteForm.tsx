@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,7 +23,7 @@ const COUNTRIES = [
   'Nicaragua', 'North Macedonia', 'Panama', 'Paraguay', 'Peru', 'Philippines',
   'Poland', 'Portugal', 'Puerto Rico', 'Romania', 'Rwanda', 'Senegal',
   'Singapore', 'Slovakia', 'Slovenia', 'South Africa', 'South Korea', 'Spain',
-  'Sri Lanka', 'Taiwan', 'Tanzania', 'Thailand', 'Turkey', 'Uganda',
+  'Sri Lanka', 'Sweden', 'Taiwan', 'Tanzania', 'Thailand', 'Turkey', 'Uganda',
   'United Kingdom', 'Uruguay', 'USA', 'Venezuela', 'Zambia', 'Zimbabwe'
 ];
 
@@ -47,10 +46,10 @@ const CURRENCY_MAP: Record<string, string> = {
   "Peru": "PEN", "Philippines": "PHP", "Poland": "PLN", "Portugal": "EUR",
   "Puerto Rico": "USD", "Romania": "RON", "Rwanda": "RWF", "Senegal": "XOF",
   "Singapore": "SGD", "Slovakia": "EUR", "Slovenia": "EUR", "South Africa": "ZAR",
-  "South Korea": "KRW", "Spain": "EUR", "Sri Lanka": "LKR", "Taiwan": "TWD",
-  "Tanzania": "TZS", "Thailand": "THB", "Turkey": "TRY", "Uganda": "UGX",
-  "United Kingdom": "GBP", "Uruguay": "UYU", "USA": "USD", "Venezuela": "VES",
-  "Zambia": "ZMW", "Zimbabwe": "ZWL"
+  "South Korea": "KRW", "Spain": "EUR", "Sri Lanka": "LKR", "Sweden": "SEK",
+  "Taiwan": "TWD", "Tanzania": "TZS", "Thailand": "THB", "Turkey": "TRY",
+  "Uganda": "UGX", "United Kingdom": "GBP", "Uruguay": "UYU", "USA": "USD",
+  "Venezuela": "VES", "Zambia": "ZMW", "Zimbabwe": "ZWL"
 };
 
 const QuoteForm: React.FC<QuoteFormProps> = ({ onSubmit }) => {
