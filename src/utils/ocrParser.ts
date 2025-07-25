@@ -6,7 +6,7 @@ const COUNTRY_CURRENCY_MAP: Record<string, string> = {
   "Austria": "EUR", "Azerbaijan": "AZN", "Bangladesh": "BDT", "Belgium": "EUR",
   "Bolivia": "BOB", "Brazil": "BRL", "Bulgaria": "BGN", "Cambodia": "KHR",
   "Canada": "CAD", "Chile": "CLP", "China": "CNY", "Colombia": "COP",
-  "Croatia": "EUR", "Czech Republic": "CZK", "Denmark": "DKK",
+  "Costa Rica": "CRC", "Croatia": "EUR", "Czech Republic": "CZK", "Denmark": "DKK",
   "Dominican Republic": "DOP", "Ecuador": "USD", "Egypt": "EGP",
   "El Salvador": "USD", "Estonia": "EUR", "Finland": "EUR", "France": "EUR",
   "Georgia": "GEL", "Germany": "EUR", "Greece": "EUR", "Guatemala": "GTQ",

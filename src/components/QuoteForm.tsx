@@ -14,7 +14,7 @@ interface QuoteFormProps {
 const COUNTRIES = [
   'Albania', 'Arab Emirates', 'Argentina', 'Australia', 'Austria', 'Azerbaijan',
   'Bangladesh', 'Belgium', 'Bolivia', 'Brazil', 'Bulgaria', 'Cambodia', 'Canada',
-  'Chile', 'China', 'Colombia', 'Croatia', 'Czech Republic', 'Denmark',
+  'Chile', 'China', 'Colombia', 'Costa Rica', 'Croatia', 'Czech Republic', 'Denmark',
   'Dominican Republic', 'Ecuador', 'Egypt', 'El Salvador', 'Estonia', 'Finland',
   'France', 'Georgia', 'Germany', 'Greece', 'Guatemala', 'Honduras', 'Hong Kong',
   'India', 'Indonesia', 'Ireland', 'Italy', 'Jamaica', 'Japan', 'Kazakhstan',
@@ -32,7 +32,7 @@ const CURRENCY_MAP: Record<string, string> = {
   "Austria": "EUR", "Azerbaijan": "AZN", "Bangladesh": "BDT", "Belgium": "EUR",
   "Bolivia": "BOB", "Brazil": "BRL", "Bulgaria": "BGN", "Cambodia": "KHR",
   "Canada": "CAD", "Chile": "CLP", "China": "CNY", "Colombia": "COP",
-  "Croatia": "EUR", "Czech Republic": "CZK", "Denmark": "DKK",
+  "Costa Rica": "CRC", "Croatia": "EUR", "Czech Republic": "CZK", "Denmark": "DKK",
   "Dominican Republic": "DOP", "Ecuador": "USD", "Egypt": "EGP",
   "El Salvador": "USD", "Estonia": "EUR", "Finland": "EUR", "France": "EUR",
   "Georgia": "GEL", "Germany": "EUR", "Greece": "EUR", "Guatemala": "GTQ",
