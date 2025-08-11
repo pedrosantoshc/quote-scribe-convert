@@ -54,6 +54,37 @@ export interface ConvertedField {
   localAmount: number;
 }
 
+// Robust amount normalization to handle thousands separators and various spaces
+const normalizeAmountString = (raw: string): string => {
+  if (!raw) return '';
+  // Remove various whitespace types and thin spaces
+  let s = raw.replace(/[\s\u00A0\u2007\u202F]/g, '');
+  // Remove apostrophe group separators often used in some locales
+  s = s.replace(/[’']/g, '');
+  // If both comma and dot are present, assume comma is thousands separator
+  if (s.includes(',') && s.includes('.')) {
+    s = s.replace(/,/g, '');
+  } else if (s.includes(',') && !s.includes('.')) {
+    // If only comma present, decide if it's decimal or thousands
+    const lastComma = s.lastIndexOf(',');
+    const decimals = s.length - lastComma - 1;
+    if (decimals === 2) {
+      // Treat as decimal separator
+      s = s.replace(/,/g, '.');
+    } else {
+      // Treat as thousands separator
+      s = s.replace(/,/g, '');
+    }
+  }
+  return s;
+};
+
+const toNumber = (raw: string): number => {
+  const s = normalizeAmountString(raw);
+  const n = parseFloat(s);
+  return isNaN(n) ? NaN : n;
+};
+
 // Helper function to safely convert ParsedField to ConvertedField
 export const convertParsedField = (field: ParsedField, defaultUSD = 0, defaultLocal = 0): ConvertedField => {
   return {
@@ -121,38 +152,38 @@ export const processAmountYouPayFields = (
 };
 
 const parseLineAmount = (line: string): { label: string; amount: number; currency: string } | null => {
-  // Enhanced pattern matching for different line formats
-  const amountMatch = line.match(/^(.+?)\s+([A-Z]{3})\s*([\d,.]+)$/i) || 
-                     line.match(/^(.+?)\s*([\d,.]+)\s+([A-Z]{3})$/i) ||
-                     line.match(/^(.+?):\s*([A-Z]{3})\s*([\d,.]+)$/i);
+  // Enhanced pattern matching for different line formats and grouping separators
+  const amountMatch = line.match(/^(.+?)\s+([A-Z]{3})\s*([\d.,\s\u00A0\u2007\u202F']+)$/i) || 
+                     line.match(/^(.+?)\s*([\d.,\s\u00A0\u2007\u202F']+)\s+([A-Z]{3})$/i) ||
+                     line.match(/^(.+?):\s*([A-Z]{3})\s*([\d.,\s\u00A0\u2007\u202F']+)$/i);
   
   if (amountMatch) {
-    let label, amount, currency;
+    let label: string | undefined, amount: number | undefined, currency: string | undefined;
     
     if (amountMatch.length === 4 && amountMatch[3]) {
       if (amountMatch[1].includes(':')) {
         // Pattern: "Label: USD 123.45"
         label = amountMatch[1].replace(':', '').trim();
         currency = amountMatch[2];
-        amount = parseFloat(amountMatch[3].replace(/,/g, ''));
-      } else if (isNaN(parseFloat(amountMatch[2]))) {
+        amount = toNumber(amountMatch[3]);
+      } else if (isNaN(Number(normalizeAmountString(amountMatch[2])))) {
         // Pattern: "Label USD 123.45"
         label = amountMatch[1].trim();
         currency = amountMatch[2];
-        amount = parseFloat(amountMatch[3].replace(/,/g, ''));
+        amount = toNumber(amountMatch[3]);
       } else {
         // Pattern: "Label 123.45 USD"
         label = amountMatch[1].trim();
-        amount = parseFloat(amountMatch[2].replace(/,/g, ''));
+        amount = toNumber(amountMatch[2]);
         currency = amountMatch[3];
       }
     }
 
     // Normalize currency to uppercase
-    currency = currency.toUpperCase();
+    if (currency) currency = currency.toUpperCase();
 
-    if (label && !isNaN(amount) && amount > 0) {
-      return { label, amount, currency };
+    if (label && amount !== undefined && !isNaN(amount) && amount > 0) {
+      return { label, amount, currency } as { label: string; amount: number; currency: string };
     }
   }
   
