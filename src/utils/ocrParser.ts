@@ -96,12 +96,15 @@ export const convertParsedField = (field: ParsedField, defaultUSD = 0, defaultLo
   };
 };
 
+// Helper to detect Severance (handles OCR misspellings)
+export const isSeveranceLabel = (label: string): boolean => {
+  const normalized = label.toLowerCase().replace(/\s+/g, '');
+  return normalized.includes('severance') || normalized.includes('sevarance') || normalized.includes('severence');
+};
+
 // Function to check if Severance Pay exists in the data
 export const hasSeverancePay = (fields: ParsedField[]): boolean => {
-  return fields.some(field => 
-    field.label.toLowerCase().includes('severance pay') ||
-    field.label.toLowerCase().includes('severance')
-  );
+  return fields.some(field => isSeveranceLabel(field.label));
 };
 
 // Function to process Amount You Pay fields with Severance Pay logic
@@ -119,10 +122,7 @@ export const processAmountYouPayFields = (
   let fieldsToProcess = parsedFields;
   if (country === 'Colombia') {
     console.log('Colombia detected - filtering out Severance Pay fields');
-    fieldsToProcess = parsedFields.filter(field => 
-      !field.label.toLowerCase().includes('severance pay') &&
-      !field.label.toLowerCase().includes('severance')
-    );
+    fieldsToProcess = parsedFields.filter(field => !isSeveranceLabel(field.label));
   }
   
   const severancePayExists = hasSeverancePay(fieldsToProcess);
