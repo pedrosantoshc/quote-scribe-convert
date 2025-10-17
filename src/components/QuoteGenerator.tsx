@@ -94,7 +94,8 @@ const QuoteGenerator = () => {
         grossSalaryUSD,
         formData.eorFeeUSD,
         rateToLocal,
-        rateToUSD
+        rateToUSD,
+        formData.country
       );
 
       // Convert employee fields

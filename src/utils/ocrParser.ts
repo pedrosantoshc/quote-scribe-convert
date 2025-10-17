@@ -110,15 +110,26 @@ export const processAmountYouPayFields = (
   grossSalary: number, 
   eorFeeUSD: number,
   rateToLocal: number,
-  rateToUSD: number
+  rateToUSD: number,
+  country?: string
 ): ConvertedField[] => {
   console.log('Processing Amount You Pay fields with Severance Pay logic');
   
-  const severancePayExists = hasSeverancePay(parsedFields);
+  // For Colombia, filter out Severance lines as dismissal deposit handles this
+  let fieldsToProcess = parsedFields;
+  if (country === 'Colombia') {
+    console.log('Colombia detected - filtering out Severance Pay fields');
+    fieldsToProcess = parsedFields.filter(field => 
+      !field.label.toLowerCase().includes('severance pay') &&
+      !field.label.toLowerCase().includes('severance')
+    );
+  }
+  
+  const severancePayExists = hasSeverancePay(fieldsToProcess);
   console.log('Severance Pay detected:', severancePayExists);
 
   // Convert parsed fields with proper currency conversion
-  const convertedFields = parsedFields.map(field => {
+  const convertedFields = fieldsToProcess.map(field => {
     const converted = convertAmount(field.amount, field.currency, getLocalCurrency(''), rateToLocal, rateToUSD);
     return convertParsedField(field, converted.usdAmount, converted.localAmount);
   });
