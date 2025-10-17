@@ -118,24 +118,17 @@ export const processAmountYouPayFields = (
 ): ConvertedField[] => {
   console.log('Processing Amount You Pay fields with Severance Pay logic');
   
-  // For Colombia, filter out Severance lines as dismissal deposit handles this
-  let fieldsToProcess = parsedFields;
-  if (country === 'Colombia') {
-    console.log('Colombia detected - filtering out Severance Pay fields');
-    fieldsToProcess = parsedFields.filter(field => !isSeveranceLabel(field.label));
-  }
-  
-  const severancePayExists = hasSeverancePay(fieldsToProcess);
+  const severancePayExists = hasSeverancePay(parsedFields);
   console.log('Severance Pay detected:', severancePayExists);
 
   // Convert parsed fields with proper currency conversion
-  const convertedFields = fieldsToProcess.map(field => {
+  const convertedFields = parsedFields.map(field => {
     const converted = convertAmount(field.amount, field.currency, getLocalCurrency(''), rateToLocal, rateToUSD);
     return convertParsedField(field, converted.usdAmount, converted.localAmount);
   });
 
-  // Add Dismissal Deposit only if Severance Pay is NOT present
-  if (!severancePayExists) {
+  // Add Dismissal Deposit only if Severance Pay is NOT present AND country is NOT Colombia
+  if (!severancePayExists && country !== 'Colombia') {
     console.log('Adding Dismissal Deposit (no Severance Pay found)');
     const dismissalDeposit: ConvertedField = {
       label: 'Dismissal Deposit (1/12 salary)',
