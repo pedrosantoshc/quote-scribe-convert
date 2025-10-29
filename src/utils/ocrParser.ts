@@ -127,8 +127,8 @@ export const processAmountYouPayFields = (
     return convertParsedField(field, converted.usdAmount, converted.localAmount);
   });
 
-  // Add Dismissal Deposit only if Severance Pay is NOT present AND country is NOT Colombia
-  if (!severancePayExists && country !== 'Colombia') {
+  // Add Dismissal Deposit only if Severance Pay is NOT present AND country is NOT Colombia or Denmark
+  if (!severancePayExists && country !== 'Colombia' && country !== 'Denmark') {
     console.log('Adding Dismissal Deposit (no Severance Pay found)');
     const dismissalDeposit: ConvertedField = {
       label: 'Dismissal Deposit (1/12 salary)',
