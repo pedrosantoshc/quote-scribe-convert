@@ -98,10 +98,13 @@ const QuoteGenerator = () => {
         formData.country
       );
 
-      // Convert employee fields
+      // Convert employee fields - use selected quote currency as source
       const { convertAmount } = await import('../utils/ocrParser');
       const convertedEmployeeFields = employeeParsed.employeeFields.map(field => {
-        const converted = convertAmount(field.amount, field.currency, localCurrency, rateToLocal, rateToUSD);
+        // Use the selected quote currency as source, not OCR-extracted currency
+        const sourceCurrency = formData.quoteCurrency === 'USD' ? 'USD' : localCurrency;
+        console.log(`Converting employee field "${field.label}": ${field.amount} ${sourceCurrency} -> ${localCurrency}`);
+        const converted = convertAmount(field.amount, sourceCurrency, localCurrency, rateToLocal, rateToUSD);
         return {
           ...field,
           ...converted
